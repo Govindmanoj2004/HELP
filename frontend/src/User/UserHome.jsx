@@ -1,71 +1,67 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { io } from "socket.io-client";
 import { motion } from "framer-motion";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import axios from "axios";
 
-const Home = () => {
+const socket = io("http://localhost:5000"); // Connect WebSocket
+
+const victimId = "67cde7a8f2df496a93879e49"; // Victim's unique ID
+
+const UserHome = () => {
   const [isAnimating, setIsAnimating] = useState(false);
   const [location, setLocation] = useState(null);
 
-  const handleClick = () => {
-    if (isAnimating) return; // Prevent multiple clicks
+  useEffect(() => {
+    socket.on("helpRequestAccepted", ({ requestId, officer }) => {
+      toast.info(`🚔 Officer ${officer.name} accepted your request!`, {
+        style: { background: "#1565c0", color: "#fff", borderRadius: "15px" },
+      });
+    });
 
+    return () => {
+      socket.off("helpRequestAccepted");
+    };
+  }, []);
+
+  const handleClick = async () => {
+    if (isAnimating) return;
     setIsAnimating(true);
 
     setTimeout(() => {
       if (!navigator.geolocation) {
         setIsAnimating(false);
-        toast.warn("⚠️ Geolocation not supported.", {
-          style: { background: "#ff9800", color: "#fff", borderRadius: "15px" },
-        });
+        toast.warn("⚠️ Geolocation not supported.");
         return;
       }
 
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        async (position) => {
           const newLocation = {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
+            victimId,
           };
 
           setLocation(newLocation);
-          console.log(newLocation); // Log newLocation instead of location
+
+          try {
+            await axios.post("http://localhost:5000/helprequest", newLocation);
+            toast.success("📍 Help request sent!");
+          } catch (error) {
+            toast.error("❌ Failed to send help request.");
+          }
 
           setIsAnimating(false);
-          toast.success("📍 Location fetched!", {
-            style: {
-              background: "#1f7a1f",
-              color: "#fff",
-              borderRadius: "15px",
-            },
-          });
         },
         (error) => {
           setIsAnimating(false);
-          toast.error(`❌ ${error.message}`, {
-            style: {
-              background: "#8b0000",
-              color: "#fff",
-              borderRadius: "15px",
-            },
-          });
+          toast.error(`❌ ${error.message}`);
         }
       );
     }, 3000);
-  };
-
-  const circleVariants = {
-    initial: { scale: 1, boxShadow: "0 0 0 0 rgba(255, 255, 255, 0.5)" },
-    animate: {
-      scale: [1, 1.2, 1],
-      boxShadow: [
-        "0 0 0 0 rgba(255, 255, 255, 0.5)",
-        "0 0 20vmin 15vmin rgba(255, 255, 255, 0.3)",
-        "0 0 40vmin 30vmin rgba(255, 255, 255, 0)",
-      ],
-      transition: { duration: 1.8, repeat: Infinity, ease: "easeInOut" },
-    },
   };
 
   return (
@@ -92,21 +88,14 @@ const Home = () => {
           boxShadow: "0 8px 16px rgba(217, 4, 41, 0.4)",
         }}
         onClick={handleClick}
-        variants={circleVariants}
-        initial="initial"
-        animate={isAnimating ? "animate" : "initial"}
+        animate={isAnimating ? { scale: [1, 1.2, 1] } : {}}
       >
         <LocationOnIcon sx={{ color: "white", fontSize: "48px" }} />
       </motion.div>
 
-      {/* Toast Notifications */}
-      <ToastContainer
-        position="bottom-right"
-        autoClose={2000}
-        hideProgressBar
-      />
+      <ToastContainer position="bottom-right" autoClose={2000} hideProgressBar />
     </div>
   );
 };
 
-export default Home;
+export default UserHome;
