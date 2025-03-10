@@ -19,7 +19,7 @@ const OfficierHome = () => {
   const [helpRequests, setHelpRequests] = useState([]);
   const [currentRequest, setCurrentRequest] = useState(null);
   const [loading, setLoading] = useState(false);
-  const officerId = "67cde7e5f2df496a93879e4c"; // Replace with actual logged-in officer ID
+  const officerId = "67cde7e5f2df496a93879e4c"; //replace id with session(session work pending ahhh)
 
   // Fetch help requests
   useEffect(() => {
@@ -191,7 +191,7 @@ const OfficierHome = () => {
                         sx={{
                           width: "100%",
                           p: 2,
-                          borderRadius: "12px", // Added border radius
+                          borderRadius: "12px",
                           backgroundColor: "#f5f5f5",
                           boxShadow: "0px 2px 10px rgba(0,0,0,0.1)",
                         }}
