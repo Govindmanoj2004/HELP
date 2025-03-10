@@ -24,11 +24,11 @@ const Login = () => {
 
       if (res.data.success) {
         if (user.role === "victim") {
-          alert("Welcome to Victim Dashboard!"); // Redirect Victim
-          // navigate("/victim-dashboard");
+          // alert("Welcome to Victim Dashboard!"); // Redirect Victim
+          navigate("/user/home");
         } else {
-          alert("Welcome to Officer Dashboard!"); // Redirect Officer
-          // navigate("/officer-dashboard");
+          // alert("Welcome to Officer Dashboard!"); // Redirect Officer
+          navigate("/officer/home");
         }
       }
     } catch (err) {

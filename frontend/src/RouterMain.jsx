@@ -9,7 +9,7 @@ const RouterMain = () => {
     <Routes>
       <Route path='/user/*' element={<RouterUser/>} />
       <Route path='/guest/*' element={<RouterGuest/>} />
-      <Route path='/officier/*' element={<RouterOfficier/>} />
+      <Route path='/officer/*' element={<RouterOfficier/>} />
     </Routes>
   );
 };
