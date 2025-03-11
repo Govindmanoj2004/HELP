@@ -1,5 +1,14 @@
 import { useState } from "react";
-import { TextField, Button, Container, Typography, Box, MenuItem, Stack, InputAdornment } from "@mui/material";
+import {
+  TextField,
+  Button,
+  Container,
+  Typography,
+  Box,
+  MenuItem,
+  Stack,
+  InputAdornment,
+} from "@mui/material";
 import { motion } from "framer-motion";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -19,26 +28,56 @@ const Login = () => {
     setError("");
 
     try {
-      const endpoint = user.role === "victim" ? "/victim/login" : "/officer/login";
+      const endpoint =
+        user.role === "victim" ? "/victim/login" : "/officer/login";
       const res = await axios.post(`http://localhost:5000${endpoint}`, user);
+
+      console.log("Login Response:", res.data); // Debugging Log
 
       if (res.data.success) {
         if (user.role === "victim") {
-          // alert("Welcome to Victim Dashboard!"); // Redirect Victim
+          if (!res.data.user || !res.data.user.id) {
+            console.error("Error: No user ID in response");
+            setError("Login failed: User ID missing.");
+            return;
+          }
+          sessionStorage.setItem("uID", res.data.user.id);
+          console.log("Stored User ID:", sessionStorage.getItem("uID")); // Debugging Log
           navigate("/user/home");
         } else {
-          // alert("Welcome to Officer Dashboard!"); // Redirect Officer
+          if (!res.data.user || !res.data.user.id) {
+            console.error("Error: No officer ID in response");
+            setError("Login failed: Officer ID missing.");
+            return;
+          }
+          sessionStorage.setItem("oID", res.data.user.id);
+          console.log("Stored Officer ID:", sessionStorage.getItem("oID")); // Debugging Log
           navigate("/officer/home");
         }
+      } else {
+        setError("Login failed: No success flag.");
       }
     } catch (err) {
+      console.error("Login Error:", err.response?.data || err.message);
       setError(err.response?.data?.message || "Login failed");
     }
   };
 
   return (
-    <Container maxWidth="md" sx={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
-      <motion.div initial={{ opacity: 0, y: -30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+    <Container
+      maxWidth="md"
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100vh",
+      }}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: -30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
         <Box
           sx={{
             p: 4,
@@ -49,7 +88,12 @@ const Login = () => {
             width: "100%", // Wider form
           }}
         >
-          <Typography variant="h4" fontWeight="bold" color="#c62828" gutterBottom>
+          <Typography
+            variant="h4"
+            fontWeight="bold"
+            color="#c62828"
+            gutterBottom
+          >
             Login
           </Typography>
           <Typography variant="subtitle1" color="textSecondary" gutterBottom>
@@ -84,9 +128,10 @@ const Login = () => {
                   "& .MuiInputLabel-root.Mui-focused": {
                     color: "#c62828", // Active label color
                   },
-                  "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#c62828", // Active input border color
-                  },
+                  "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline":
+                    {
+                      borderColor: "#c62828", // Active input border color
+                    },
                 }}
                 onChange={handleChange}
                 required
@@ -111,9 +156,10 @@ const Login = () => {
                   "& .MuiInputLabel-root.Mui-focused": {
                     color: "#c62828", // Active label color
                   },
-                  "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#c62828", // Active input border color
-                  },
+                  "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline":
+                    {
+                      borderColor: "#c62828", // Active input border color
+                    },
                 }}
                 onChange={handleChange}
                 required
@@ -139,9 +185,10 @@ const Login = () => {
                   "& .MuiInputLabel-root.Mui-focused": {
                     color: "#c62828", // Active label color
                   },
-                  "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#c62828", // Active input border color
-                  },
+                  "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline":
+                    {
+                      borderColor: "#c62828", // Active input border color
+                    },
                 }}
               >
                 <MenuItem value="victim">Victim</MenuItem>

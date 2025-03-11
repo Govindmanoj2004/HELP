@@ -1,69 +1,96 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import io from "socket.io-client";
-import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  Button,
-  CircularProgress,
-  List,
-  ListItem,
-} from "@mui/material";
-import { motion } from "framer-motion";
+import axios from "axios";
+import { Modal, Box, Typography, Button } from "@mui/material";
 
 const socket = io("http://localhost:5000");
 
 const OfficierHome = () => {
   const [helpRequests, setHelpRequests] = useState([]);
-  const [currentRequest, setCurrentRequest] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const officerId = "67cde7e5f2df496a93879e4c"; //replace id with session(session work pending ahhh)
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [openModal, setOpenModal] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState(null);
 
-  // Fetch help requests
+  //update status
+  const releaseHelpRequest = async () => {
+    if (!selectedRequest) return;
+
+    try {
+      const response = await axios.post(
+        "http://localhost:5000/helprequest/release",
+        {
+          requestId: selectedRequest._id,
+        }
+      );
+
+      console.log("✅ Help request released:", response.data);
+
+      // Update the help requests list
+      setHelpRequests((prevRequests) =>
+        prevRequests.map((req) =>
+          req._id === selectedRequest._id
+            ? { ...req, assignedOfficerId: null, status: "pending" }
+            : req
+        )
+      );
+
+      setSelectedRequest(null);
+      setOpenModal(false);
+    } catch (error) {
+      console.error(
+        "❌ Error releasing request:",
+        error.response?.data || error.message
+      );
+    }
+  };
+
   useEffect(() => {
-    const fetchRequests = async () => {
+    const fetchHelpRequests = async () => {
       try {
         const response = await axios.get("http://localhost:5000/helprequests");
-        setHelpRequests(response.data.requests);
-      } catch (error) {
-        console.error("Error fetching help requests:", error);
+        setHelpRequests(response.data.requests || []);
+      } catch (err) {
+        setError("Failed to fetch help requests.");
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchRequests();
+    fetchHelpRequests();
 
+    // Listen for real-time updates
     socket.on("newHelpRequest", (newRequest) => {
-      setHelpRequests((prev) => [...prev, newRequest]);
+      setHelpRequests((prevRequests) => [...prevRequests, newRequest]);
     });
 
-    socket.on("helpRequestAccepted", ({ requestId }) => {
-      setHelpRequests((prev) => prev.filter((req) => req._id !== requestId));
-    });
-
-    socket.on("helpRequestReleased", ({ requestId }) => {
-      if (currentRequest && currentRequest._id === requestId) {
-        setCurrentRequest(null);
-      }
+    socket.on("updateHelpRequest", ({ requestId, status, officerId }) => {
+      setHelpRequests((prevRequests) =>
+        prevRequests.map((request) =>
+          request._id === requestId
+            ? { ...request, status, assignedOfficerId: officerId }
+            : request
+        )
+      );
     });
 
     return () => {
       socket.off("newHelpRequest");
-      socket.off("helpRequestAccepted");
-      socket.off("helpRequestReleased");
+      socket.off("updateHelpRequest");
     };
-  }, [currentRequest]);
+  }, []);
 
-  // Accept Help Request
-  const acceptRequest = async (requestId) => {
-    if (currentRequest) {
-      alert("You are already handling a request!");
-      return;
-    }
-
-    setLoading(true);
+  const acceptHelpRequest = async (requestId) => {
     try {
+      const officerId = sessionStorage.getItem("oID");
+
+      if (!officerId) {
+        console.error("No officer ID found in sessionStorage");
+        return;
+      }
+
+      console.log("Sending Accept Request:", { requestId, officerId });
+
       const response = await axios.post(
         "http://localhost:5000/helprequest/accept",
         {
@@ -72,167 +99,117 @@ const OfficierHome = () => {
         }
       );
 
-      setCurrentRequest(response.data.request);
-      setHelpRequests((prev) => prev.filter((req) => req._id !== requestId));
+      console.log("Accepted Help Request:", response.data);
 
-      socket.emit("helpRequestAccepted", { requestId, officerId });
+      // Find the selected request
+      const request = helpRequests.find((req) => req._id === requestId);
+      setSelectedRequest(request);
 
-      alert("Request accepted successfully!");
+      // Open Modal
+      setOpenModal(true);
     } catch (error) {
       console.error(
         "Error accepting request:",
         error.response?.data || error.message
       );
-      alert(error.response?.data?.message || "Failed to accept request");
-    } finally {
-      setLoading(false);
     }
   };
 
-  const releaseRequest = async () => {
-    if (!currentRequest) return;
-
-    setLoading(true);
-    try {
-      await axios.post("http://localhost:5000/helprequest/release", {
-        requestId: currentRequest._id,
-      });
-
-      setCurrentRequest(null);
-      alert("Disconnected from victim.");
-    } catch (error) {
-      console.error(
-        "Error disconnecting:",
-        error.response?.data || error.message
-      );
-      alert("Failed to disconnect.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (loading) return <p>Loading help requests...</p>;
+  if (error) return <p className="error">{error}</p>;
 
   return (
-    <Box
-      sx={{
-        maxWidth: "800px",
-        margin: "auto",
-        padding: "20px",
-        textAlign: "center",
-      }}
-    >
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <Typography variant="h4" fontWeight="bold" mb={3} color="primary">
-          Officer Dashboard
-        </Typography>
-      </motion.div>
+    <div className="officier-home">
+      <h1>Active Help Requests</h1>
+      {helpRequests.length > 0 ? (
+        helpRequests.map((request, index) => {
+          const { location } = request || {}; // Ensure request exists
+          const latitude = location?.latitude ?? "N/A"; // Avoid crash
+          const longitude = location?.longitude ?? "N/A"; // Avoid crash
 
-      {currentRequest ? (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          <Card sx={{ backgroundColor: "#ffebee", p: 2, mb: 2 }}>
-            <CardContent>
-              <Typography variant="h5" fontWeight="bold" color="error">
-                Currently Assisting:
-              </Typography>
-              <Typography>
-                <strong>Victim:</strong>{" "}
-                {currentRequest.victimId?.name || "Unknown"}
-              </Typography>
-              <Typography>
-                <strong>Location:</strong> ({currentRequest.location.latitude},{" "}
-                {currentRequest.location.longitude})
-              </Typography>
-              <Button
-                variant="contained"
-                color="error"
-                onClick={releaseRequest}
-                sx={{ mt: 2 }}
-                disabled={loading}
-              >
-                {loading ? (
-                  <CircularProgress size={24} sx={{ color: "white" }} />
-                ) : (
-                  "Disconnect"
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-        </motion.div>
+          return (
+            <div key={index} className="help-request-card">
+              <p>Victim: {request.victimId?.name || "Unknown"}</p>
+              <p>Latitude: {latitude}</p>
+              <p>Longitude: {longitude}</p>
+              <button onClick={() => acceptHelpRequest(request._id)}>
+                Accept
+              </button>
+            </div>
+          );
+        })
       ) : (
-        <>
-          {helpRequests.length === 0 ? (
-            <Typography>No pending requests</Typography>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5 }}
-            >
-              <Typography
-                variant="h5"
-                fontWeight="bold"
-                color="secondary"
-                mb={2}
-              >
-                Active Help Requests
-              </Typography>
-              <List>
-                {helpRequests.map((request) => (
-                  <motion.div key={request._id} whileHover={{ scale: 1.02 }}>
-                    <ListItem>
-                      <Card
-                        sx={{
-                          width: "100%",
-                          p: 2,
-                          borderRadius: "12px",
-                          backgroundColor: "#f5f5f5",
-                          boxShadow: "0px 2px 10px rgba(0,0,0,0.1)",
-                        }}
-                      >
-                        <CardContent>
-                          <Typography>
-                            <strong>Victim:</strong>{" "}
-                            {request.victimId?.name || "Unknown"}
-                          </Typography>
-                          <Typography>
-                            <strong>Location:</strong> (
-                            {request.location.latitude},{" "}
-                            {request.location.longitude})
-                          </Typography>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => acceptRequest(request._id)}
-                            sx={{ mt: 2 }}
-                            disabled={loading}
-                          >
-                            {loading ? (
-                              <CircularProgress
-                                size={24}
-                                sx={{ color: "white" }}
-                              />
-                            ) : (
-                              "Accept"
-                            )}
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    </ListItem>
-                  </motion.div>
-                ))}
-              </List>
-            </motion.div>
-          )}
-        </>
+        <p>No active help requests</p>
       )}
-    </Box>
+
+      {/* MODAL */}
+      <Modal open={openModal} onClose={() => setOpenModal(false)}>
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 400,
+            bgcolor: "background.paper",
+            boxShadow: 24,
+            p: 4,
+            borderRadius: 2,
+            textAlign: "center",
+          }}
+        >
+          <Typography variant="h6" fontWeight="bold">
+            Help Request Details
+          </Typography>
+
+          {selectedRequest && (
+            <>
+              <Typography variant="body1" mt={2}>
+                <strong>Victim:</strong>{" "}
+                {selectedRequest.victimId?.name || "Unknown"}
+              </Typography>
+              <Typography variant="body1">
+                <strong>Latitude:</strong>{" "}
+                {selectedRequest.location?.latitude || "N/A"}
+              </Typography>
+              <Typography variant="body1">
+                <strong>Longitude:</strong>{" "}
+                {selectedRequest.location?.longitude || "N/A"}
+              </Typography>
+
+              <Box
+                sx={{
+                  mt: 3,
+                  p: 2,
+                  bgcolor: "#f5f5f5",
+                  borderRadius: 1,
+                  border: "1px solid #ccc",
+                }}
+              >
+                <Typography variant="subtitle1" fontWeight="bold">
+                  Chat (Coming Soon)
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  A secure chat will be available here in the future.
+                </Typography>
+              </Box>
+            </>
+          )}
+
+          <Button
+            variant="contained"
+            sx={{
+              mt: 3,
+              backgroundColor: "#c62828",
+              "&:hover": { backgroundColor: "#b71c1c" },
+            }}
+            onClick={releaseHelpRequest} // Call the function here
+          >
+            Disconnect
+          </Button>
+        </Box>
+      </Modal>
+    </div>
   );
 };
 

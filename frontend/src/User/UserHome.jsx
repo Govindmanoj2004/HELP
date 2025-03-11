@@ -5,24 +5,54 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import axios from "axios";
+import { Dialog, DialogContent, DialogTitle } from "@mui/material";
 
-const socket = io("http://localhost:5000"); // Connect WebSocket
+const socket = io("http://localhost:5000"); // WebSocket connection
 
-const victimId = "67cde7a8f2df496a93879e49"; // Victim's unique ID
+const victimId = sessionStorage.getItem("uID");
+console.log("Victim ID:", victimId);
 
 const UserHome = () => {
   const [isAnimating, setIsAnimating] = useState(false);
-  const [location, setLocation] = useState(null);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [officerName, setOfficerName] = useState("");
 
   useEffect(() => {
-    socket.on("helpRequestAccepted", ({ requestId, officer }) => {
-      toast.info(`🚔 Officer ${officer.name} accepted your request!`, {
+    socket.on("helpRequestAccepted", async ({ requestId, officerId }) => {
+      console.log("🔵 helpRequestAccepted event received:", {
+        requestId,
+        officerId,
+      });
+
+      toast.info(`🚔 Officer is responding to your request!`, {
         style: { background: "#1565c0", color: "#fff", borderRadius: "15px" },
       });
+
+      setIsAnimating(false);
+      setIsChatOpen(true); // Open the chat first
+
+      // Fetch officer details
+      try {
+        const res = await axios.get(
+          `http://localhost:5000/officer/${officerId}`
+        );
+        console.log("✅ Officer data fetched:", res.data);
+        setOfficerName(res.data.name);
+      } catch (err) {
+        console.error("❌ Error fetching officer details:", err);
+        setOfficerName("Unknown Officer");
+      }
+    });
+
+    socket.on("helpRequestResolved", ({ requestId }) => {
+      console.log("🟢 helpRequestResolved event received:", { requestId });
+      toast.success("✅ Your request has been resolved!");
+      setIsChatOpen(false);
     });
 
     return () => {
       socket.off("helpRequestAccepted");
+      socket.off("helpRequestResolved");
     };
   }, []);
 
@@ -45,19 +75,18 @@ const UserHome = () => {
             victimId,
           };
 
-          setLocation(newLocation);
-
           try {
             await axios.post("http://localhost:5000/helprequest", newLocation);
+            console.log("📍 Help request sent:", newLocation);
             toast.success("📍 Help request sent!");
           } catch (error) {
+            console.error("❌ Failed to send help request:", error);
             toast.error("❌ Failed to send help request.");
           }
-
-          setIsAnimating(false);
         },
         (error) => {
           setIsAnimating(false);
+          console.error("❌ Geolocation error:", error);
           toast.error(`❌ ${error.message}`);
         }
       );
@@ -93,7 +122,19 @@ const UserHome = () => {
         <LocationOnIcon sx={{ color: "white", fontSize: "48px" }} />
       </motion.div>
 
-      <ToastContainer position="bottom-right" autoClose={2000} hideProgressBar />
+      <ToastContainer
+        position="bottom-right"
+        autoClose={2000}
+        hideProgressBar
+      />
+
+      {/* Chat Modal */}
+      <Dialog open={isChatOpen} onClose={() => setIsChatOpen(false)}>
+        <DialogTitle>Chat with Officer</DialogTitle>
+        <DialogContent>
+          <p>Officer {officerName} is now assisting you.</p>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

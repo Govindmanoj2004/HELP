@@ -168,6 +168,13 @@ app.post("/officer/login", async (req, res) => {
         .json({ success: false, message: "Invalid credentials" });
     }
 
+    console.log("Officer Login Response:", {
+      // Debugging Log
+      success: true,
+      message: "Officer logged in",
+      user: { id: officer._id, name: officer.name },
+    });
+
     res.status(200).json({
       success: true,
       message: "Officer logged in",
@@ -178,7 +185,35 @@ app.post("/officer/login", async (req, res) => {
   }
 });
 
+//get officer
+app.get("/officer/:id", async (req, res) => {
+  try {
+    const officer = await Officer.findById(req.params.id);
+    if (!officer) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Officer not found" });
+    }
+    res.json({ success: true, name: officer.name });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// Get All Pending Help Requests
+app.get("/helprequests", async (req, res) => {
+  try {
+    const requests = await HelpRequest.find({
+      assignedOfficerId: null,
+    }).populate("victimId", "name");
+    res.status(200).json({ success: true, requests });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
 // Create a Help Request
+// Emit new help request event
 app.post("/helprequest", async (req, res) => {
   try {
     const { victimId, latitude, longitude } = req.body;
@@ -188,7 +223,7 @@ app.post("/helprequest", async (req, res) => {
     });
     await newRequest.save();
 
-    io.emit("newHelpRequest", newRequest);
+    io.emit("newHelpRequest", newRequest); // Notify all officers about a new request
     res.status(201).json({
       success: true,
       message: "Help request created",
@@ -199,36 +234,16 @@ app.post("/helprequest", async (req, res) => {
   }
 });
 
-// Get all Help Requests (For Officers)
-app.get("/helprequests", async (req, res) => {
-  try {
-    const requests = await HelpRequest.find({ status: "pending" }).populate(
-      "victimId",
-      "name"
-    );
-    res.status(200).json({ success: true, requests });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-});
-
-// Accept a Help Request
+// Accept Help Request and notify victim
 app.post("/helprequest/accept", async (req, res) => {
   try {
     const { requestId, officerId } = req.body;
-
-    if (!requestId || !officerId) {
-      return res.status(400).json({
-        success: false,
-        message: "Request ID and Officer ID are required",
-      });
-    }
-
     const request = await HelpRequest.findById(requestId);
+
     if (!request) {
       return res
         .status(404)
-        .json({ success: false, message: "Help request not found" });
+        .json({ success: false, message: "Request not found" });
     }
 
     if (request.assignedOfficerId) {
@@ -240,7 +255,7 @@ app.post("/helprequest/accept", async (req, res) => {
     request.assignedOfficerId = officerId;
     await request.save();
 
-    io.emit("helpRequestAccepted", { requestId, officerId });
+    io.emit("helpRequestAccepted", { requestId, officerId }); // 🔄 Corrected event name
 
     res
       .status(200)
@@ -250,17 +265,10 @@ app.post("/helprequest/accept", async (req, res) => {
   }
 });
 
-//release a Help Request
+// Resolve Help Request
 app.post("/helprequest/release", async (req, res) => {
   try {
     const { requestId } = req.body;
-
-    if (!requestId) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Request ID is required" });
-    }
-
     const request = await HelpRequest.findById(requestId);
 
     if (!request) {
@@ -269,14 +277,12 @@ app.post("/helprequest/release", async (req, res) => {
         .json({ success: false, message: "Request not found" });
     }
 
-    request.status = "resolved";
+    request.assignedOfficerId = null;
     await request.save();
 
-    io.emit("helpRequestReleased", { requestId, status: "resolved" });
+    io.emit("updateHelpRequest", { requestId, status: "pending" });
 
-    res
-      .status(200)
-      .json({ success: true, message: "Request marked as resolved" });
+    res.status(200).json({ success: true, message: "Request released" });
   } catch (error) {
     res.status(500).json({ success: false, message: "Server error" });
   }
