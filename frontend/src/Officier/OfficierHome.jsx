@@ -19,21 +19,26 @@ const OfficierHome = () => {
     try {
       const response = await axios.post(
         "http://localhost:5000/helprequest/release",
-        {
-          requestId: selectedRequest._id,
-        }
+        { requestId: selectedRequest._id }
       );
 
-      console.log("✅ Help request released:", response.data);
+      console.log("✅ API Response:", response.data); // Log API response
 
-      // Update the help requests list
-      setHelpRequests((prevRequests) =>
-        prevRequests.map((req) =>
-          req._id === selectedRequest._id
-            ? { ...req, assignedOfficerId: null, status: "pending" }
-            : req
-        )
-      );
+      if (response.data.success) {
+        // Update UI manually
+        setHelpRequests((prevRequests) =>
+          prevRequests.map((req) =>
+            req._id === selectedRequest._id
+              ? { ...req, assignedOfficerId: null, status: "pending" }
+              : req
+          )
+        );
+      } else {
+        console.error(
+          "❌ Failed to release help request:",
+          response.data.message
+        );
+      }
 
       setSelectedRequest(null);
       setOpenModal(false);
@@ -121,23 +126,26 @@ const OfficierHome = () => {
   return (
     <div className="officier-home">
       <h1>Active Help Requests</h1>
-      {helpRequests.length > 0 ? (
-        helpRequests.map((request, index) => {
-          const { location } = request || {}; // Ensure request exists
-          const latitude = location?.latitude ?? "N/A"; // Avoid crash
-          const longitude = location?.longitude ?? "N/A"; // Avoid crash
+      {helpRequests.filter((request) => request.status === "pending").length >
+      0 ? (
+        helpRequests
+          .filter((request) => request.status === "pending")
+          .map((request, index) => {
+            const { location } = request || {}; // Ensure request exists
+            const latitude = location?.latitude ?? "N/A"; // Avoid crash
+            const longitude = location?.longitude ?? "N/A"; // Avoid crash
 
-          return (
-            <div key={index} className="help-request-card">
-              <p>Victim: {request.victimId?.name || "Unknown"}</p>
-              <p>Latitude: {latitude}</p>
-              <p>Longitude: {longitude}</p>
-              <button onClick={() => acceptHelpRequest(request._id)}>
-                Accept
-              </button>
-            </div>
-          );
-        })
+            return (
+              <div key={index} className="help-request-card">
+                <p>Victim: {request.victimId?.name || "Unknown"}</p>
+                <p>Latitude: {latitude}</p>
+                <p>Longitude: {longitude}</p>
+                <button onClick={() => acceptHelpRequest(request._id)}>
+                  Accept
+                </button>
+              </div>
+            );
+          })
       ) : (
         <p>No active help requests</p>
       )}

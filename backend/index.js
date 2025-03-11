@@ -21,7 +21,7 @@ const io = new Server(server, { cors: { origin: "*" } });
 const connectDB = async () => {
   try {
     await mongoose.connect(
-      "mongodb+srv://Byu:Byu@kohai.zxe75.mongodb.net/db_help",
+      "mongodb+srv://test:test123@cluster0.mn5z1.mongodb.net/test",
       {
         useNewUrlParser: true,
         useUnifiedTopology: true,
@@ -79,7 +79,6 @@ const Officer = mongoose.model("Officer", OfficerSchema);
 const HelpRequest = mongoose.model("HelpRequest", HelpRequestSchema);
 
 // API Routes
-
 // Victim Registration
 app.post("/victim/register", async (req, res) => {
   try {
@@ -212,7 +211,6 @@ app.get("/helprequests", async (req, res) => {
   }
 });
 
-// Create a Help Request
 // Emit new help request event
 app.post("/helprequest", async (req, res) => {
   try {
@@ -255,7 +253,7 @@ app.post("/helprequest/accept", async (req, res) => {
     request.assignedOfficerId = officerId;
     await request.save();
 
-    io.emit("helpRequestAccepted", { requestId, officerId }); // 🔄 Corrected event name
+    io.emit("helpRequestAccepted", { requestId, officerId });
 
     res
       .status(200)
@@ -278,11 +276,18 @@ app.post("/helprequest/release", async (req, res) => {
     }
 
     request.assignedOfficerId = null;
+    request.status = "resolved";
     await request.save();
 
-    io.emit("updateHelpRequest", { requestId, status: "pending" });
+    io.emit("updateHelpRequest", {
+      requestId,
+      status: request.status,
+      officerId: null,
+    });
 
-    res.status(200).json({ success: true, message: "Request released" });
+    res
+      .status(200)
+      .json({ success: true, message: "Request released", request });
   } catch (error) {
     res.status(500).json({ success: false, message: "Server error" });
   }
