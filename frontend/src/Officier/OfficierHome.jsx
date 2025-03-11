@@ -1,84 +1,37 @@
 import React, { useEffect, useState } from "react";
 import io from "socket.io-client";
 import axios from "axios";
-import { Modal, Box, Typography, Button } from "@mui/material";
+import { Modal, Box, Typography, Button, Card, CardContent, CircularProgress, Container, Grid } from "@mui/material";
+import { m, motion } from "framer-motion";
 
 const socket = io("http://localhost:5000");
 
-const OfficierHome = () => {
+const OfficerHome = () => {
   const [helpRequests, setHelpRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [openModal, setOpenModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
 
-  //update status
-  const releaseHelpRequest = async () => {
-    if (!selectedRequest) return;
-
+  const fetchHelpRequests = async () => {
     try {
-      const response = await axios.post(
-        "http://localhost:5000/helprequest/release",
-        { requestId: selectedRequest._id }
-      );
-
-      console.log("✅ API Response:", response.data); // Log API response
-
-      if (response.data.success) {
-        // Update UI manually
-        setHelpRequests((prevRequests) =>
-          prevRequests.map((req) =>
-            req._id === selectedRequest._id
-              ? { ...req, assignedOfficerId: null, status: "pending" }
-              : req
-          )
-        );
-      } else {
-        console.error(
-          "❌ Failed to release help request:",
-          response.data.message
-        );
-      }
-
-      setSelectedRequest(null);
-      setOpenModal(false);
-    } catch (error) {
-      console.error(
-        "❌ Error releasing request:",
-        error.response?.data || error.message
-      );
+      const response = await axios.get("http://localhost:5000/helprequests");
+      setHelpRequests(response.data.requests || []);
+    } catch (err) {
+      setError("Failed to fetch help requests.");
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    const fetchHelpRequests = async () => {
-      try {
-        const response = await axios.get("http://localhost:5000/helprequests");
-        setHelpRequests(response.data.requests || []);
-      } catch (err) {
-        setError("Failed to fetch help requests.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchHelpRequests();
-
-    // Listen for real-time updates
-    socket.on("newHelpRequest", (newRequest) => {
-      setHelpRequests((prevRequests) => [...prevRequests, newRequest]);
-    });
-
+    socket.on("newHelpRequest", (newRequest) => setHelpRequests((prev) => [...prev, newRequest]));
     socket.on("updateHelpRequest", ({ requestId, status, officerId }) => {
-      setHelpRequests((prevRequests) =>
-        prevRequests.map((request) =>
-          request._id === requestId
-            ? { ...request, status, assignedOfficerId: officerId }
-            : request
-        )
+      setHelpRequests((prev) =>
+        prev.map((req) => (req._id === requestId ? { ...req, status, assignedOfficerId: officerId } : req))
       );
     });
-
     return () => {
       socket.off("newHelpRequest");
       socket.off("updateHelpRequest");
@@ -88,70 +41,78 @@ const OfficierHome = () => {
   const acceptHelpRequest = async (requestId) => {
     try {
       const officerId = sessionStorage.getItem("oID");
-
-      if (!officerId) {
-        console.error("No officer ID found in sessionStorage");
-        return;
-      }
-
-      console.log("Sending Accept Request:", { requestId, officerId });
-
-      const response = await axios.post(
-        "http://localhost:5000/helprequest/accept",
-        {
-          requestId,
-          officerId,
-        }
-      );
-
-      console.log("Accepted Help Request:", response.data);
-
-      // Find the selected request
-      const request = helpRequests.find((req) => req._id === requestId);
-      setSelectedRequest(request);
-
-      // Open Modal
+      if (!officerId) return;
+      await axios.post("http://localhost:5000/helprequest/accept", { requestId, officerId });
+      setSelectedRequest(helpRequests.find((req) => req._id === requestId));
       setOpenModal(true);
     } catch (error) {
-      console.error(
-        "Error accepting request:",
-        error.response?.data || error.message
-      );
+      console.error("Error accepting request:", error.response?.data || error.message);
     }
   };
 
-  if (loading) return <p>Loading help requests...</p>;
-  if (error) return <p className="error">{error}</p>;
+  const releaseHelpRequest = async () => {
+    if (!selectedRequest) return;
+    try {
+      await axios.post("http://localhost:5000/helprequest/release", { requestId: selectedRequest._id });
+      socket.emit("officerClosedChat", { requestId: selectedRequest._id });
+      closeModalAndRefresh();
+    } catch (error) {
+      console.error("Error releasing request:", error.response?.data || error.message);
+    }
+  };
+
+  const closeModalAndRefresh = () => {
+    setOpenModal(false);
+    setSelectedRequest(null);
+    fetchHelpRequests();
+  };
 
   return (
-    <div className="officier-home">
-      <h1>Active Help Requests</h1>
-      {helpRequests.filter((request) => request.status === "pending").length >
-      0 ? (
-        helpRequests
-          .filter((request) => request.status === "pending")
-          .map((request, index) => {
-            const { location } = request || {}; // Ensure request exists
-            const latitude = location?.latitude ?? "N/A"; // Avoid crash
-            const longitude = location?.longitude ?? "N/A"; // Avoid crash
+    <Container maxWidth="md" sx={{ mt: 4 }}>
+      <Typography variant="h4" fontWeight="bold" textAlign="center" gutterBottom sx={{mb: 5}}>
+        Active Help Requests
+      </Typography>
 
-            return (
-              <div key={index} className="help-request-card">
-                <p>Victim: {request.victimId?.name || "Unknown"}</p>
-                <p>Latitude: {latitude}</p>
-                <p>Longitude: {longitude}</p>
-                <button onClick={() => acceptHelpRequest(request._id)}>
-                  Accept
-                </button>
-              </div>
-            );
-          })
+      {loading ? (
+        <Box display="flex" justifyContent="center" mt={4}>
+          <CircularProgress />
+        </Box>
+      ) : error ? (
+        <Typography color="error" textAlign="center">{error}</Typography>
       ) : (
-        <p>No active help requests</p>
+        <Grid container spacing={2} justifyContent="center">
+          {helpRequests.filter((req) => req.status === "pending").length > 0 ? (
+            helpRequests
+              .filter((req) => req.status === "pending")
+              .map((req, index) => (
+                <Grid item xs={12} sm={6} key={index}>
+                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                    <Card elevation={3} sx={{ p: 2, borderRadius: 3 }}>
+                      <CardContent>
+                        <Typography variant="h6">Victim: {req.victimId?.name || "Unknown"}</Typography>
+                        <Typography variant="body2">Latitude: {req.location?.latitude || "N/A"}</Typography>
+                        <Typography variant="body2">Longitude: {req.location?.longitude || "N/A"}</Typography>
+                        <Button
+                          variant="contained"
+                          fullWidth
+                          sx={{ mt: 2 }}
+                          onClick={() => acceptHelpRequest(req._id)}
+                        >
+                          Accept
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                </Grid>
+              ))
+          ) : (
+            <Typography textAlign="center">No active help requests</Typography>
+          )}
+        </Grid>
       )}
 
-      {/* MODAL */}
-      <Modal open={openModal} onClose={() => setOpenModal(false)}>
+      {/* Modal */}
+      <Modal open={openModal} onClose={closeModalAndRefresh}>
         <Box
           sx={{
             position: "absolute",
@@ -162,63 +123,33 @@ const OfficierHome = () => {
             bgcolor: "background.paper",
             boxShadow: 24,
             p: 4,
-            borderRadius: 2,
+            borderRadius: 3,
             textAlign: "center",
           }}
         >
-          <Typography variant="h6" fontWeight="bold">
-            Help Request Details
-          </Typography>
-
+          <Typography variant="h6" fontWeight="bold">Help Request Details</Typography>
           {selectedRequest && (
             <>
-              <Typography variant="body1" mt={2}>
-                <strong>Victim:</strong>{" "}
-                {selectedRequest.victimId?.name || "Unknown"}
-              </Typography>
-              <Typography variant="body1">
-                <strong>Latitude:</strong>{" "}
-                {selectedRequest.location?.latitude || "N/A"}
-              </Typography>
-              <Typography variant="body1">
-                <strong>Longitude:</strong>{" "}
-                {selectedRequest.location?.longitude || "N/A"}
-              </Typography>
-
-              <Box
-                sx={{
-                  mt: 3,
-                  p: 2,
-                  bgcolor: "#f5f5f5",
-                  borderRadius: 1,
-                  border: "1px solid #ccc",
-                }}
-              >
-                <Typography variant="subtitle1" fontWeight="bold">
-                  Chat (Coming Soon)
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  A secure chat will be available here in the future.
-                </Typography>
+              <Typography variant="body1" mt={2}><strong>Victim:</strong> {selectedRequest.victimId?.name || "Unknown"}</Typography>
+              <Typography variant="body1"><strong>Latitude:</strong> {selectedRequest.location?.latitude || "N/A"}</Typography>
+              <Typography variant="body1"><strong>Longitude:</strong> {selectedRequest.location?.longitude || "N/A"}</Typography>
+              <Box sx={{ mt: 3, p: 2, bgcolor: "#f5f5f5", borderRadius: 1, border: "1px solid #ccc" }}>
+                <Typography variant="subtitle1" fontWeight="bold">Chat (Coming Soon)</Typography>
+                <Typography variant="body2" color="text.secondary">A secure chat will be available here in the future.</Typography>
               </Box>
             </>
           )}
-
           <Button
             variant="contained"
-            sx={{
-              mt: 3,
-              backgroundColor: "#c62828",
-              "&:hover": { backgroundColor: "#b71c1c" },
-            }}
-            onClick={releaseHelpRequest} // Call the function here
+            sx={{ mt: 3, backgroundColor: "#c62828", "&:hover": { backgroundColor: "#b71c1c" } }}
+            onClick={releaseHelpRequest}
           >
             Disconnect
           </Button>
         </Box>
       </Modal>
-    </div>
+    </Container>
   );
 };
 
-export default OfficierHome;
+export default OfficerHome;

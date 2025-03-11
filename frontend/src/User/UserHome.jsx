@@ -5,9 +5,11 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import axios from "axios";
-import { Dialog, DialogContent, DialogTitle } from "@mui/material";
+import { Box, Dialog, DialogContent, DialogTitle, IconButton, Typography } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 
-const socket = io("http://localhost:5000"); // WebSocket connection
+
+const socket = io("http://localhost:5000");
 
 const victimId = sessionStorage.getItem("uID");
 console.log("Victim ID:", victimId);
@@ -16,45 +18,62 @@ const UserHome = () => {
   const [isAnimating, setIsAnimating] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [officerName, setOfficerName] = useState("");
+  const [activeRequest, setActiveRequest] = useState(false);
 
   useEffect(() => {
-    socket.on("helpRequestAccepted", async ({ requestId, officerId }) => {
-      console.log("🔵 helpRequestAccepted event received:", {
-        requestId,
-        officerId,
-      });
+    const handleHelpRequestAccepted = async ({ requestId, officerId }) => {
+      setActiveRequest(true);
+      setIsAnimating(false);
+      setIsChatOpen(true);
 
       toast.info(`🚔 Officer is responding to your request!`, {
         style: { background: "#1565c0", color: "#fff", borderRadius: "15px" },
       });
 
-      setIsAnimating(false);
-      setIsChatOpen(true); // Open the chat first
-
-      // Fetch officer details
       try {
         const res = await axios.get(
           `http://localhost:5000/officer/${officerId}`
         );
-        console.log("✅ Officer data fetched:", res.data);
         setOfficerName(res.data.name);
       } catch (err) {
-        console.error("❌ Error fetching officer details:", err);
         setOfficerName("Unknown Officer");
       }
-    });
+    };
 
-    socket.on("helpRequestResolved", ({ requestId }) => {
-      console.log("🟢 helpRequestResolved event received:", { requestId });
-      toast.success("✅ Your request has been resolved!");
+    const handleHelpRequestResolved = ({ requestId }) => {
+      if (activeRequest) {
+        toast.success("✅ Your request has been resolved!", {
+          autoClose: 3000,
+        });
+      }
       setIsChatOpen(false);
-    });
+      setActiveRequest(false);
+    };
+
+    const handleOfficerClosedChat = ({ message }) => {
+      console.log("🚪 Officer disconnected:", message);
+
+      if (activeRequest) {
+        toast.warning("🚨 Officer has disconnected!", {
+          autoClose: 3000,
+          style: { background: "#ff9800", color: "#fff", borderRadius: "15px" },
+        });
+      }
+
+      setIsChatOpen(false);
+      setActiveRequest(false);
+    };
+
+    socket.on("helpRequestAccepted", handleHelpRequestAccepted);
+    socket.on("helpRequestResolved", handleHelpRequestResolved);
+    socket.on("officerClosedChat", handleOfficerClosedChat);
 
     return () => {
-      socket.off("helpRequestAccepted");
-      socket.off("helpRequestResolved");
+      socket.off("helpRequestAccepted", handleHelpRequestAccepted);
+      socket.off("helpRequestResolved", handleHelpRequestResolved);
+      socket.off("officerClosedChat", handleOfficerClosedChat);
     };
-  }, []);
+  }, [activeRequest]);
 
   const handleClick = async () => {
     if (isAnimating) return;
@@ -79,6 +98,7 @@ const UserHome = () => {
             await axios.post("http://localhost:5000/helprequest", newLocation);
             console.log("📍 Help request sent:", newLocation);
             toast.success("📍 Help request sent!");
+            setActiveRequest(true);
           } catch (error) {
             console.error("❌ Failed to send help request:", error);
             toast.error("❌ Failed to send help request.");
@@ -129,10 +149,40 @@ const UserHome = () => {
       />
 
       {/* Chat Modal */}
-      <Dialog open={isChatOpen} onClose={() => setIsChatOpen(false)}>
-        <DialogTitle>Chat with Officer</DialogTitle>
+      <Dialog
+        open={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        PaperProps={{
+          component: motion.div,
+          initial: { opacity: 0, scale: 0.9 },
+          animate: { opacity: 1, scale: 1 },
+          exit: { opacity: 0, scale: 0.9 },
+          transition: { duration: 0.3 },
+          sx: {
+            borderRadius: 3,
+            bgcolor: "background.paper",
+            boxShadow: 24,
+            p: 2,
+            maxWidth: "400px",
+          },
+        }}
+      >
+        <Box display="flex" justifyContent="space-between" alignItems="center">
+          <DialogTitle sx={{ fontWeight: "bold", fontSize: "1.2rem" }}>
+            Chat with Officer
+          </DialogTitle>
+          <IconButton
+            onClick={() => setIsChatOpen(false)}
+            sx={{ color: "gray" }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
+
         <DialogContent>
-          <p>Officer {officerName} is now assisting you.</p>
+          <Typography variant="body1" sx={{ color: "text.secondary", mt: 1 }}>
+            Officer <strong>{officerName}</strong> is now assisting you.
+          </Typography>
         </DialogContent>
       </Dialog>
     </div>

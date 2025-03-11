@@ -295,14 +295,15 @@ app.post("/helprequest/release", async (req, res) => {
 
 // WebSocket Connection
 io.on("connection", (socket) => {
-  console.log("A user connected");
-
-  socket.on("acceptHelpRequest", ({ requestId, officerId }) => {
-    io.emit("helpRequestAccepted", { requestId, officerId });
-  });
+  console.log("A user connected:", socket.id);
 
   socket.on("disconnect", () => {
-    console.log("User disconnected");
+    console.log("Officer disconnected:", socket.id);
+
+    // Notify victims that the officer is no longer available
+    io.emit("officerClosedChat", {
+      message: "The officer has disconnected.",
+    });
   });
 });
 
