@@ -28,7 +28,7 @@ The project is built using the **MERN stack** along with real-time communication
 ### 🔧 1️⃣ Backend Setup
 Clone and set up the backend:
 ```bash
-git clone https://github.com/your-repo/lifeline-backend.git
-cd lifeline-backend
-npm install
-npm start
+git clone https://github.com/your-repo/lifeline.git
+cd lifeline
+npm install (on both frontend and backend)
+npm start (both the frontend and backend should run same time)
