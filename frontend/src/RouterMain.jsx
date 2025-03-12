@@ -8,7 +8,7 @@ const RouterMain = () => {
   return (
     <Routes>
       <Route path='/user/*' element={<RouterUser/>} />
-      <Route path='/guest/*' element={<RouterGuest/>} />
+      <Route path='/*' element={<RouterGuest/>} />
       <Route path='/officer/*' element={<RouterOfficier/>} />
     </Routes>
   );

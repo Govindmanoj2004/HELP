@@ -1,33 +1,51 @@
 import React, { useEffect, useState } from "react";
 import { io } from "socket.io-client";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
+import SosIcon from "@mui/icons-material/ReportProblem";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import axios from "axios";
-import { Box, Dialog, DialogContent, DialogTitle, IconButton, Typography } from "@mui/material";
+import {
+  Box,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  Typography,
+  Avatar,
+  Chip,
+  CircularProgress,
+  Paper,
+} from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import VerifiedIcon from "@mui/icons-material/Verified";
 
-
+// Initialize socket connection
 const socket = io("http://localhost:5000");
-
 const victimId = sessionStorage.getItem("uID");
-console.log("Victim ID:", victimId);
 
 const UserHome = () => {
   const [isAnimating, setIsAnimating] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [officerName, setOfficerName] = useState("");
   const [activeRequest, setActiveRequest] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const handleHelpRequestAccepted = async ({ requestId, officerId }) => {
       setActiveRequest(true);
       setIsAnimating(false);
+      setLoading(false);
       setIsChatOpen(true);
 
       toast.info(`🚔 Officer is responding to your request!`, {
-        style: { background: "#1565c0", color: "#fff", borderRadius: "15px" },
+        style: {
+          background: "#3f51b5",
+          color: "#fff",
+          borderRadius: "12px",
+          boxShadow: "0 4px 12px rgba(63, 81, 181, 0.3)",
+        },
       });
 
       try {
@@ -44,6 +62,12 @@ const UserHome = () => {
       if (activeRequest) {
         toast.success("✅ Your request has been resolved!", {
           autoClose: 3000,
+          style: {
+            background: "#4caf50",
+            color: "#fff",
+            borderRadius: "12px",
+            boxShadow: "0 4px 12px rgba(76, 175, 80, 0.3)",
+          },
         });
       }
       setIsChatOpen(false);
@@ -52,14 +76,17 @@ const UserHome = () => {
 
     const handleOfficerClosedChat = ({ message }) => {
       console.log("🚪 Officer disconnected:", message);
-
       if (activeRequest) {
         toast.warning("🚨 Officer has disconnected!", {
           autoClose: 3000,
-          style: { background: "#ff9800", color: "#fff", borderRadius: "15px" },
+          style: {
+            background: "#ff9800",
+            color: "#fff",
+            borderRadius: "12px",
+            boxShadow: "0 4px 12px rgba(255, 152, 0, 0.3)",
+          },
         });
       }
-
       setIsChatOpen(false);
       setActiveRequest(false);
     };
@@ -76,13 +103,23 @@ const UserHome = () => {
   }, [activeRequest]);
 
   const handleClick = async () => {
-    if (isAnimating) return;
+    if (isAnimating || activeRequest) return;
+
     setIsAnimating(true);
+    setLoading(true);
 
     setTimeout(() => {
       if (!navigator.geolocation) {
         setIsAnimating(false);
-        toast.warn("⚠️ Geolocation not supported.");
+        setLoading(false);
+        toast.warn("⚠️ Geolocation not supported.", {
+          style: {
+            background: "#ff9800",
+            color: "#fff",
+            borderRadius: "12px",
+            boxShadow: "0 4px 12px rgba(255, 152, 0, 0.3)",
+          },
+        });
         return;
       }
 
@@ -97,20 +134,48 @@ const UserHome = () => {
           try {
             await axios.post("http://localhost:5000/helprequest", newLocation);
             console.log("📍 Help request sent:", newLocation);
-            toast.success("📍 Help request sent!");
+            toast.success(
+              "📍 Help request sent! Awaiting officer response...",
+              {
+                style: {
+                  background: "#4caf50",
+                  color: "#fff",
+                  borderRadius: "12px",
+                  boxShadow: "0 4px 12px rgba(76, 175, 80, 0.3)",
+                },
+              }
+            );
             setActiveRequest(true);
+            // Keep the loading state active until an officer responds
           } catch (error) {
             console.error("❌ Failed to send help request:", error);
-            toast.error("❌ Failed to send help request.");
+            toast.error("❌ Failed to send help request.", {
+              style: {
+                background: "#f44336",
+                color: "#fff",
+                borderRadius: "12px",
+                boxShadow: "0 4px 12px rgba(244, 67, 54, 0.3)",
+              },
+            });
+            setIsAnimating(false);
+            setLoading(false);
           }
         },
         (error) => {
           setIsAnimating(false);
+          setLoading(false);
           console.error("❌ Geolocation error:", error);
-          toast.error(`❌ ${error.message}`);
+          toast.error(`❌ ${error.message}`, {
+            style: {
+              background: "#f44336",
+              color: "#fff",
+              borderRadius: "12px",
+              boxShadow: "0 4px 12px rgba(244, 67, 54, 0.3)",
+            },
+          });
         }
       );
-    }, 3000);
+    }, 1500);
   };
 
   return (
@@ -119,72 +184,299 @@ const UserHome = () => {
         minHeight: "100vh",
         width: "100vw",
         display: "flex",
+        flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
-        background: "linear-gradient(to bottom, #d90429, #1d1d1d)",
+        background: "linear-gradient(135deg, #1a237e, #d32f2f)",
+        fontFamily: "'Roboto', sans-serif",
+        position: "relative",
+        overflow: "hidden",
       }}
     >
+      {/* Background pattern */}
+      <Box
+        sx={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          opacity: 0.05,
+          backgroundImage:
+            "radial-gradient(circle, #ffffff 1px, transparent 1px)",
+          backgroundSize: "30px 30px",
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* App title */}
+      <Typography
+        variant="h3"
+        component="h1"
+        sx={{
+          color: "white",
+          marginBottom: 4,
+          fontWeight: 700,
+          textShadow: "0 2px 10px rgba(0,0,0,0.3)",
+        }}
+      >
+        Emergency Response
+      </Typography>
+
+      {/* Status indicator */}
+      <Chip
+        label={activeRequest ? "Help request active" : "Ready for emergency"}
+        color={activeRequest ? "error" : "success"}
+        icon={activeRequest ? <SosIcon /> : <VerifiedIcon />}
+        sx={{
+          marginBottom: 6,
+          padding: "8px 12px",
+          height: "auto",
+          fontSize: "1rem",
+          mb: 10,
+          fontWeight: 500,
+          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+        }}
+      />
+
+      {/* Main button */}
       <motion.div
         style={{
-          width: "150px",
-          height: "150px",
+          width: "180px",
+          height: "180px",
           borderRadius: "50%",
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          cursor: "pointer",
-          background: "#d90429",
-          boxShadow: "0 8px 16px rgba(217, 4, 41, 0.4)",
+          cursor: activeRequest ? "default" : "pointer",
+          background: activeRequest ? "#9e9e9e" : "#d32f2f",
+          boxShadow:
+            "0 8px 30px rgba(211, 47, 47, 0.6), inset 0 -2px 10px rgba(0,0,0,0.2)",
+          position: "relative",
         }}
         onClick={handleClick}
+        whileHover={!activeRequest ? { scale: 1.05 } : {}}
+        whileTap={!activeRequest ? { scale: 0.95 } : {}}
         animate={isAnimating ? { scale: [1, 1.2, 1] } : {}}
-      >
-        <LocationOnIcon sx={{ color: "white", fontSize: "48px" }} />
-      </motion.div>
-
-      <ToastContainer
-        position="bottom-right"
-        autoClose={2000}
-        hideProgressBar
-      />
-
-      {/* Chat Modal */}
-      <Dialog
-        open={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
-        PaperProps={{
-          component: motion.div,
-          initial: { opacity: 0, scale: 0.9 },
-          animate: { opacity: 1, scale: 1 },
-          exit: { opacity: 0, scale: 0.9 },
-          transition: { duration: 0.3 },
-          sx: {
-            borderRadius: 3,
-            bgcolor: "background.paper",
-            boxShadow: 24,
-            p: 2,
-            maxWidth: "400px",
-          },
+        transition={{
+          duration: 1.5,
+          repeat: isAnimating ? Infinity : 0,
+          ease: "easeInOut",
         }}
       >
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-          <DialogTitle sx={{ fontWeight: "bold", fontSize: "1.2rem" }}>
-            Chat with Officer
-          </DialogTitle>
-          <IconButton
-            onClick={() => setIsChatOpen(false)}
-            sx={{ color: "gray" }}
+        {loading ? (
+          <Box
+            position="relative"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
           >
-            <CloseIcon />
-          </IconButton>
-        </Box>
+            <CircularProgress size={80} thickness={4} sx={{ color: "white" }} />
+            <Typography
+              variant="h6"
+              sx={{
+                position: "absolute",
+                color: "white",
+                fontWeight: 600,
+              }}
+            >
+              SOS
+            </Typography>
+          </Box>
+        ) : (
+          <>
+            <LocationOnIcon sx={{ color: "white", fontSize: "64px" }} />
+            <Box
+              component={motion.div}
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{
+                opacity: [0, 0.7, 0],
+                scale: [1, 2, 3],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeOut",
+              }}
+              sx={{
+                position: "absolute",
+                width: "100%",
+                height: "100%",
+                borderRadius: "50%",
+                background: activeRequest
+                  ? "transparent"
+                  : "rgba(211, 47, 47, 0.3)",
+                pointerEvents: "none",
+              }}
+            />
+          </>
+        )}
+      </motion.div>
 
-        <DialogContent>
-          <Typography variant="body1" sx={{ color: "text.secondary", mt: 1 }}>
-            Officer <strong>{officerName}</strong> is now assisting you.
-          </Typography>
-        </DialogContent>
-      </Dialog>
+      <Typography
+        variant="body1"
+        sx={{
+          color: "rgba(255,255,255,0.8)",
+          marginTop: 5,
+          maxWidth: "80%",
+          textAlign: "center",
+          padding: 2,
+          borderRadius: 2,
+          mt: 15,
+          backdropFilter: "blur(10px)",
+          backgroundColor: "rgba(255,255,255,0.1)",
+        }}
+      >
+        {activeRequest
+          ? "Your emergency request has been sent. Please wait for an officer to respond."
+          : "Press the emergency button to send your location and request immediate assistance."}
+      </Typography>
+
+      {/* Toast notifications */}
+      <ToastContainer
+        position="bottom-right"
+        autoClose={4000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
+
+      {/* Officer chat dialog */}
+      <AnimatePresence>
+        {isChatOpen && (
+          <Dialog
+            open={isChatOpen}
+            onClose={() => {}}
+            PaperProps={{
+              component: motion.div,
+              initial: { opacity: 0, y: 20 },
+              animate: { opacity: 1, y: 0 },
+              exit: { opacity: 0, y: 20 },
+              transition: { duration: 0.3, ease: "easeInOut" },
+              sx: {
+                borderRadius: 3,
+                bgcolor: "background.paper",
+                boxShadow: "0 10px 40px rgba(0,0,0,0.2)",
+                p: 0,
+                maxWidth: "400px",
+                overflow: "hidden",
+              },
+            }}
+          >
+            <Box
+              sx={{
+                backgroundColor: "#1a237e",
+                color: "white",
+                padding: "16px 24px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Box display="flex" alignItems="center" gap={2}>
+                <Avatar
+                  sx={{
+                    bgcolor: "#3f51b5",
+                    width: 48,
+                    height: 48,
+                    border: "2px solid white",
+                  }}
+                >
+                  {officerName.charAt(0)}
+                </Avatar>
+                <Box>
+                  <DialogTitle
+                    sx={{ padding: 0, fontWeight: "bold", fontSize: "1.2rem" }}
+                  >
+                    Officer Connected
+                  </DialogTitle>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: "rgba(255,255,255,0.8)" }}
+                  >
+                    Police Emergency Line
+                  </Typography>
+                </Box>
+              </Box>
+              <IconButton
+                onClick={() => setIsChatOpen(false)}
+                sx={{ color: "white" }}
+              >
+                <CloseIcon />
+              </IconButton>
+            </Box>
+
+            <DialogContent sx={{ padding: 3 }}>
+              <Paper
+                elevation={0}
+                sx={{
+                  padding: 2,
+                  backgroundColor: "rgba(63, 81, 181, 0.1)",
+                  borderRadius: 2,
+                  border: "1px solid rgba(63, 81, 181, 0.2)",
+                  marginBottom: 2,
+                }}
+              >
+                <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                  <strong>Status:</strong> Active Response
+                </Typography>
+                <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                  <strong>Officer:</strong> {officerName}
+                </Typography>
+                <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                  <strong>Request ID:</strong> #
+                  {Math.floor(Math.random() * 10000)
+                    .toString()
+                    .padStart(4, "0")}
+                </Typography>
+              </Paper>
+
+              <Typography
+                variant="body1"
+                sx={{
+                  padding: 2,
+                  backgroundColor: "#f5f5f5",
+                  borderRadius: 2,
+                  color: "#424242",
+                  fontWeight: 500,
+                }}
+              >
+                Officer <strong>{officerName}</strong> is now assisting you.
+                Please provide details about your emergency situation.
+              </Typography>
+
+              {/* Chat input placeholder */}
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  marginTop: 2,
+                  padding: 1,
+                  border: "1px solid #e0e0e0",
+                  borderRadius: 2,
+                }}
+              >
+                <Typography
+                  variant="body2"
+                  sx={{ color: "text.disabled", flex: 1 }}
+                >
+                  Type your message here...
+                </Typography>
+                <IconButton size="small" sx={{ color: "#3f51b5" }}>
+                  <motion.div whileHover={{ rotate: 45 }}>
+                    <LocationOnIcon fontSize="small" />
+                  </motion.div>
+                </IconButton>
+              </Box>
+            </DialogContent>
+          </Dialog>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
