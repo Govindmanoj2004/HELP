@@ -311,3 +311,35 @@ io.on("connection", (socket) => {
 server.listen(port, () => {
   console.log(`🚀 Server is running on port ${port}`);
 });
+
+//Get for victims
+
+app.get("/victim/:id", async (req, res) => {
+  try {
+    const victim = await Victim.findById(req.params.id);
+    if (!victim) {
+      return res.status(404).json({ message: "Victim not found" });
+    }
+    res.status(200).json([victim]); // Wrap the response in an array
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+//update victim
+app.put("/victim/:id", async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    const updatedVictim = await Victim.findByIdAndUpdate(
+      req.params.id,
+      { name, email, password },
+      { new: true } // Return the updated document
+    );
+    if (!updatedVictim) {
+      return res.status(404).json({ message: "Victim not found" });
+    }
+    res.status(200).json(updatedVictim);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});

@@ -20,6 +20,8 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import VerifiedIcon from "@mui/icons-material/Verified";
+import SettingsIcon from "@mui/icons-material/Settings";
+import { useNavigate } from "react-router-dom";
 
 // Initialize socket connection
 const socket = io("http://localhost:5000");
@@ -31,6 +33,7 @@ const UserHome = () => {
   const [officerName, setOfficerName] = useState("");
   const [activeRequest, setActiveRequest] = useState(false);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleHelpRequestAccepted = async ({ requestId, officerId }) => {
@@ -193,6 +196,23 @@ const UserHome = () => {
         overflow: "hidden",
       }}
     >
+      <IconButton
+        sx={{
+          position: "absolute",
+          top: 16,
+          right: 16,
+          color: "white",
+          backgroundColor: "rgba(255, 255, 255, 0.1)",
+          "&:hover": {
+            backgroundColor: "rgba(255, 255, 255, 0.2)",
+          },
+        }}
+        onClick={() => {
+          navigate("/user/settings"); // Navigate to the settings page
+        }}
+      >
+        <SettingsIcon />
+      </IconButton>
       {/* Background pattern */}
       <Box
         sx={{
