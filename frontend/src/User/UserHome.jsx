@@ -36,6 +36,12 @@ const UserHome = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    
+    // Notify the server that the victim has connected
+    if (victimId) {
+      socket.emit("victimConnected", victimId);
+    }
+
     const handleHelpRequestAccepted = async ({ requestId, officerId }) => {
       setActiveRequest(true);
       setIsAnimating(false);

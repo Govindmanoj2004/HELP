@@ -183,7 +183,7 @@ const Settings = () => {
                 },
               }}
             >
-              <HomeIcon />
+              <HomeIcon  />
             </IconButton>
 
             <Typography

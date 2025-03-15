@@ -253,7 +253,25 @@ app.post("/helprequest/accept", async (req, res) => {
     request.assignedOfficerId = officerId;
     await request.save();
 
-    io.emit("helpRequestAccepted", { requestId, officerId });
+    // Get the socket IDs for the victim and officer
+    const victimSocketId = connectedVictims.get(request.victimId.toString());
+    const officerSocketId = connectedOfficers.get(officerId.toString());
+
+    // Notify the victim
+    if (victimSocketId) {
+      io.to(victimSocketId).emit("helpRequestAccepted", {
+        requestId,
+        officerId,
+      });
+    }
+
+    // Notify the officer
+    if (officerSocketId) {
+      io.to(officerSocketId).emit("helpRequestAccepted", {
+        requestId,
+        officerId,
+      });
+    }
 
     res
       .status(200)
@@ -293,17 +311,46 @@ app.post("/helprequest/release", async (req, res) => {
   }
 });
 
-// WebSocket Connection
+//socket
+
+// Track socket IDs for victims and officers
+const connectedVictims = new Map();
+const connectedOfficers = new Map();
+
 io.on("connection", (socket) => {
   console.log("A user connected:", socket.id);
 
-  socket.on("disconnect", () => {
-    console.log("Officer disconnected:", socket.id);
+  // When a victim connects
+  socket.on("victimConnected", (userId) => {
+    connectedVictims.set(userId, socket.id);
+    console.log(`Victim ${userId} connected with socket ID: ${socket.id}`);
+  });
 
-    // Notify victims that the officer is no longer available
-    io.emit("officerClosedChat", {
-      message: "The officer has disconnected.",
-    });
+  // When an officer connects
+  socket.on("officerConnected", (userId) => {
+    connectedOfficers.set(userId, socket.id);
+    console.log(`Officer ${userId} connected with socket ID: ${socket.id}`);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected:", socket.id);
+
+    // Remove the disconnected user from the maps
+    for (const [userId, sockId] of connectedVictims.entries()) {
+      if (sockId === socket.id) {
+        connectedVictims.delete(userId);
+        console.log(`Victim ${userId} disconnected`);
+        break;
+      }
+    }
+
+    for (const [userId, sockId] of connectedOfficers.entries()) {
+      if (sockId === socket.id) {
+        connectedOfficers.delete(userId);
+        console.log(`Officer ${userId} disconnected`);
+        break;
+      }
+    }
   });
 });
 
