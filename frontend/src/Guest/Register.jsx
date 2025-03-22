@@ -18,16 +18,16 @@ import { useNavigate } from "react-router-dom";
 import { Person, Email, Lock, AssignmentInd } from "@mui/icons-material";
 
 const colors = {
-  primary: "#3b82f6", 
-  secondary: "#f43f5e", 
-  background: "#f1f5f9", 
-  card: "#ffffff", 
-  text: "#0f172a", 
-  lightText: "#64748b", 
-  accent: "#8b5cf6", 
-  white: "#fff", 
-  divider: "#e2e8f0", 
-  gradient: "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)", 
+  primary: "#3b82f6",
+  secondary: "#f43f5e",
+  background: "#f1f5f9",
+  card: "#ffffff",
+  text: "#0f172a",
+  lightText: "#64748b",
+  accent: "#8b5cf6",
+  white: "#fff",
+  divider: "#e2e8f0",
+  gradient: "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)",
 };
 
 const Register = () => {
@@ -37,18 +37,69 @@ const Register = () => {
     password: "",
     role: "victim",
   });
-  const [error, setError] = useState("");
+  const [errors, setErrors] = useState({
+    name: "",
+    email: "",
+    password: "",
+  });
+  const [submitError, setSubmitError] = useState("");
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const handleChange = (e) => {
-    setUser({ ...user, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setUser({ ...user, [name]: value });
+
+    // Clear errors when the user starts typing
+    if (errors[name]) {
+      setErrors({ ...errors, [name]: "" });
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = { name: "", email: "", password: "" };
+    let isValid = true;
+
+    // Name Validation
+    if (!user.name.trim()) {
+      newErrors.name = "Name is required";
+      isValid = false;
+    } else if (!/^[A-Za-z\s]+$/.test(user.name)) {
+      newErrors.name = "Name should contain only letters and spaces";
+      isValid = false;
+    }
+
+    // Email Validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!user.email.trim()) {
+      newErrors.email = "Email is required";
+      isValid = false;
+    } else if (!emailRegex.test(user.email)) {
+      newErrors.email = "Please enter a valid email address";
+      isValid = false;
+    }
+
+    // Password Validation
+    if (!user.password.trim()) {
+      newErrors.password = "Password is required";
+      isValid = false;
+    } else if (user.password.length < 8) {
+      newErrors.password = "Password must be at least 8 characters long";
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
+    setSubmitError("");
+
+    if (!validateForm()) {
+      return; // Stop submission if validation fails
+    }
 
     try {
       const endpoint =
@@ -56,10 +107,10 @@ const Register = () => {
       const res = await axios.post(`http://localhost:5000${endpoint}`, user);
 
       if (res.data.success) {
-        navigate("/login"); 
+        navigate("/login");
       }
     } catch (err) {
-      setError(err.response?.data?.message || "Registration failed");
+      setSubmitError(err.response?.data?.message || "Registration failed");
     }
   };
 
@@ -71,7 +122,6 @@ const Register = () => {
         alignItems: "center",
         justifyContent: "center",
         minHeight: "100vh",
-        // backgroundColor: colors.background,
         paddingTop: isMobile ? 4 : 0,
         paddingBottom: isMobile ? 4 : 0,
       }}
@@ -120,7 +170,7 @@ const Register = () => {
             </Typography>
           </motion.div>
 
-          {error && (
+          {submitError && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -136,7 +186,7 @@ const Register = () => {
                 }}
               >
                 <Typography color={colors.secondary} variant="body2">
-                  {error}
+                  {submitError}
                 </Typography>
               </Box>
             </motion.div>
@@ -148,6 +198,9 @@ const Register = () => {
                 label="Full Name"
                 name="name"
                 fullWidth
+                value={user.name}
+                error={!!errors.name}
+                helperText={errors.name}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -179,6 +232,9 @@ const Register = () => {
                 name="email"
                 type="email"
                 fullWidth
+                value={user.email}
+                error={!!errors.email}
+                helperText={errors.email}
                 autoComplete="email"
                 InputProps={{
                   startAdornment: (
@@ -210,8 +266,11 @@ const Register = () => {
                 label="Password"
                 name="password"
                 type="password"
-                autoComplete="new-password"
                 fullWidth
+                value={user.password}
+                error={!!errors.password}
+                helperText={errors.password}
+                autoComplete="new-password"
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">

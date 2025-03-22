@@ -23,6 +23,7 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/system";
 import { useNavigate } from "react-router-dom";
+import LogoutIcon from "@mui/icons-material/Logout";
 import {
   FaDoorOpen,
   FaExclamationTriangle,
@@ -36,17 +37,18 @@ import {
 import { HiMenu, HiX } from "react-icons/hi";
 import { motion } from "framer-motion";
 
-// Modern Color Palette
+// Vibrant Color Palette
 const colors = {
-  primary: "#2563eb", // Modern blue
-  secondary: "#e11d48", // Vibrant red for emergency/alert actions
-  background: "#f8fafc", // Very light blue-gray
-  card: "#ffffff", // White card backgrounds
-  text: "#1e293b", // Dark slate for text
-  lightText: "#64748b", // Lighter text for secondary content
-  accent: "#8b5cf6", // Purple accent
-  white: "#fff", // Pure white
-  divider: "#e2e8f0", // Light gray divider
+  primary: "#FF5722", // Vibrant orange
+  secondary: "#E91E63", // Bright pink
+  background: "#FCE4EC", // Light pink background
+  card: "#FFFFFF", // White card backgrounds
+  text: "#212121", // Dark gray for text
+  lightText: "#757575", // Lighter gray for secondary content
+  accent: "#9C27B0", // Purple accent
+  white: "#FFFFFF", // Pure white
+  divider: "#BDBDBD", // Light gray divider
+  gradient: "linear-gradient(135deg, #FF5722 0%, #E91E63 100%)", // Gradient from orange to pink
 };
 
 // Styled Components
@@ -80,10 +82,10 @@ const HeroSection = styled(Box)(({ theme }) => ({
   position: "relative",
   textAlign: "center",
   padding: theme.spacing(15, 2),
-  backgroundImage: "linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)",
+  backgroundImage: "linear-gradient(135deg, #FF5722 0%, #E91E63 100%)",
   color: colors.white,
   borderRadius: "0 0 30px 30px",
-  boxShadow: "0 10px 25px rgba(37, 99, 235, 0.2)",
+  boxShadow: "0 10px 25px rgba(255, 87, 34, 0.2)",
   overflow: "hidden",
   "&::before": {
     content: '""',
@@ -105,12 +107,12 @@ const SOSButton = styled(Button)(({ theme }) => ({
   borderRadius: "50px",
   padding: theme.spacing(1.5, 4),
   fontSize: "1.1rem",
-  boxShadow: "0 4px 12px rgba(225, 29, 72, 0.3)",
+  boxShadow: "0 4px 12px rgba(233, 30, 99, 0.3)",
   transition: "all 0.3s ease",
   "&:hover": {
-    backgroundColor: "#be123c", // Darker shade of secondary
+    backgroundColor: "#C2185B", // Darker shade of pink
     transform: "translateY(-3px)",
-    boxShadow: "0 8px 15px rgba(225, 29, 72, 0.4)",
+    boxShadow: "0 8px 15px rgba(233, 30, 99, 0.4)",
   },
   "&:active": {
     transform: "translateY(1px)",
@@ -152,11 +154,36 @@ const ActionButton = styled(Button)(({ theme }) => ({
   padding: theme.spacing(1.2, 3),
   fontWeight: 600,
   textTransform: "none",
-  boxShadow: "0 4px 6px rgba(37, 99, 235, 0.15)",
+  boxShadow: "0 4px 6px rgba(255, 87, 34, 0.15)",
   transition: "all 0.2s ease",
   "&:hover": {
+    backgroundColor: colors.secondary, // Bright pink
     transform: "translateY(-2px)",
-    boxShadow: "0 6px 10px rgba(37, 99, 235, 0.25)",
+    boxShadow: "0 6px 10px rgba(233, 30, 99, 0.25)",
+  },
+}));
+
+const QuickExitButton = styled(Button)(({ theme }) => ({
+  position: "fixed",
+  top: theme.spacing(2),
+  right: theme.spacing(2),
+  backgroundColor: "#6200EA", // Deep purple color
+  color: "#FFFFFF",
+  gap: "2px",
+  fontWeight: 500,
+  borderRadius: "4px",
+  padding: theme.spacing(1, 2.5),
+  fontSize: "0.875rem",
+  boxShadow: "0 2px 8px rgba(98, 0, 234, 0.2)",
+  transition: "all 0.2s ease",
+  zIndex: 1000,
+  "&:hover": {
+    backgroundColor: "#5000D3", // Slightly darker purple on hover
+    boxShadow: "0 4px 12px rgba(98, 0, 234, 0.3)",
+  },
+  "&:active": {
+    transform: "translateY(1px)",
+    boxShadow: "0 1px 5px rgba(98, 0, 234, 0.2)",
   },
 }));
 
@@ -172,6 +199,23 @@ const GuestHome = () => {
     setDrawerOpen(!drawerOpen);
   };
 
+  const handleQuickExit = () => {
+    if (window.confirm("Are you sure you want to exit quickly?")) {
+      // Open Google in a new tab
+      window.open("https://www.google.com", "_blank");
+
+      // Attempt to close the current tab
+      try {
+        window.close();
+      } catch (error) {
+        console.error("Unable to close the current tab:", error);
+        alert(
+          "This tab cannot be closed automatically. Please close it manually."
+        );
+      }
+    }
+  };
+
   const navItems = [
     { name: "Home", icon: <FaHome />, href: "#" },
     { name: "About", icon: <FaShieldAlt />, href: "#about" },
@@ -183,6 +227,10 @@ const GuestHome = () => {
 
   return (
     <Box sx={{ overflowX: "hidden", backgroundColor: colors.background }}>
+      <QuickExitButton onClick={handleQuickExit}>
+        <LogoutIcon />
+        <Typography>Quick Exit</Typography>
+      </QuickExitButton>
       {/* Header */}
       <AppBar
         position="sticky"
@@ -200,7 +248,7 @@ const GuestHome = () => {
             <Typography
               variant="h4"
               component={Link}
-              href="#"
+              href="/"
               sx={{
                 fontWeight: 800,
                 color: colors.primary,
@@ -233,6 +281,7 @@ const GuestHome = () => {
                       width: "70%",
                       padding: 2,
                       backgroundColor: colors.background,
+                      borderRadius: "0px 0px 0px 16px",
                     },
                   }}
                 >
@@ -244,67 +293,136 @@ const GuestHome = () => {
                     </IconButton>
                   </Box>
                   <List>
-                    {navItems.map((item) => (
-                      <ListItem
-                        key={item.name}
-                        component={Link}
-                        href={item.href}
-                        onClick={toggleDrawer}
-                        sx={{
-                          borderRadius: 2,
-                          mb: 1,
-                          "&:hover": {
-                            backgroundColor: `${colors.primary}15`,
-                          },
-                        }}
-                      >
-                        <Box sx={{ mr: 2, color: colors.primary }}>
-                          {item.icon}
-                        </Box>
-                        <ListItemText primary={item.name} />
-                      </ListItem>
-                    ))}
+                    <ListItem
+                      component={Link}
+                      href="/"
+                      onClick={toggleDrawer}
+                      sx={{
+                        borderRadius: 2,
+                        mb: 1,
+                        "&:hover": {
+                          backgroundColor: `${colors.primary}15`,
+                        },
+                      }}
+                    >
+                      <ListItemText primary="Home" />
+                    </ListItem>
+                    <ListItem
+                      component={Link}
+                      href="/login"
+                      onClick={toggleDrawer}
+                      sx={{
+                        borderRadius: 2,
+                        mb: 1,
+                        "&:hover": {
+                          backgroundColor: `${colors.primary}15`,
+                        },
+                      }}
+                    >
+                      <ListItemText primary="Login" />
+                    </ListItem>
                     <ListItem sx={{ mt: 2 }}>
                       <Button
                         fullWidth
                         variant="contained"
-                        // component={Link}
-                        onClick={() => navigate("/login")}
+                        onClick={() => navigate("/signup")}
                         sx={{
                           backgroundColor: colors.primary,
                           color: colors.white,
                           fontWeight: 600,
                           py: 1,
+                          borderRadius: "8px",
+                          boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
+                          transition:
+                            "transform 0.2s ease, box-shadow 0.2s ease",
+                          "&:hover": {
+                            backgroundColor: colors.primary,
+                            transform: "translateY(-2px)",
+                            boxShadow: "0px 6px 15px rgba(0, 0, 0, 0.15)",
+                          },
                         }}
                       >
-                        Login
+                        Signup
                       </Button>
                     </ListItem>
                   </List>
                 </Drawer>
               </>
             ) : (
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                <Box component="nav" sx={{ display: "flex", mr: 4 }}>
-                  {navItems.map((item) => (
-                    <NavLink key={item.name} href={item.href} sx={{ mx: 1.5 }}>
-                      {item.name}
-                    </NavLink>
-                  ))}
-                </Box>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                <NavLink
+                  href="/"
+                  sx={{
+                    mx: 2,
+                    fontSize: "1.2rem",
+                    position: "relative",
+                    textDecoration: "none", 
+                    padding: "6px 0", 
+                    "&::after": {
+                      content: '""',
+                      position: "absolute",
+                      width: "0",
+                      height: "2px",
+                      bottom: "0", 
+                      left: "50%", 
+                      transform: "translateX(-50%)", 
+                      backgroundColor: colors.primary,
+                      transition: "width 0.3s ease",
+                    },
+                    "&:hover::after": {
+                      width: "100%", 
+                    },
+                  }}
+                >
+                  Home
+                </NavLink>
+                <NavLink
+                  href="/login"
+                  sx={{
+                    mx: 2,
+                    fontSize: "1.2rem",
+                    position: "relative",
+                    textDecoration: "none",
+                    padding: "6px 0",
+                    "&::after": {
+                      content: '""',
+                      position: "absolute",
+                      width: "0",
+                      height: "2px",
+                      bottom: "0", 
+                      left: "50%", 
+                      transform: "translateX(-50%)", 
+                      backgroundColor: colors.primary,
+                      transition: "width 0.3s ease",
+                    },
+                    "&:hover::after": {
+                      width: "100%", 
+                    },
+                  }}
+                >
+                  Login
+                </NavLink>
                 <Button
                   variant="contained"
-                  component={Link}
-                  onClick={() => navigate("/login")}
+                  onClick={() => navigate("/register")}
                   sx={{
                     backgroundColor: colors.primary,
                     fontWeight: 600,
                     borderRadius: "8px",
                     textTransform: "none",
                     px: 3,
+                    py: 1,
+                    ml: 1,
+                    boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
+                    transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                    "&:hover": {
+                      backgroundColor: colors.primary,
+                      transform: "translateY(-2px)",
+                      boxShadow: "0px 6px 15px rgba(0, 0, 0, 0.15)",
+                    },
                   }}
                 >
-                  Login
+                  Signup
                 </Button>
               </Box>
             )}
@@ -368,6 +486,7 @@ const GuestHome = () => {
               Get Help Now
             </ActionButton>
             <SOSButton
+              onClick={() => navigate("/login")}
               variant="contained"
               startIcon={<FaExclamationTriangle />}
             >
@@ -445,7 +564,7 @@ const GuestHome = () => {
                   overflow: "hidden",
                   boxShadow: "0 15px 30px rgba(0, 0, 0, 0.1)",
                   aspectRatio: "4/3",
-                  backgroundColor: "#dbeafe",
+                  backgroundColor: "#FFCCBC", // Light orange
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -509,7 +628,7 @@ const GuestHome = () => {
                 description:
                   "Access emergency support and connect with professionals who can assist you right away.",
                 action: "Get Help Now",
-                href: "#",
+                href: "https://www.india.gov.in/help",
               },
               {
                 icon: <FaShieldAlt size={40} color={colors.primary} />,
@@ -517,7 +636,7 @@ const GuestHome = () => {
                 description:
                   "Learn how to create a safety plan to protect yourself and your loved ones.",
                 action: "Learn More",
-                href: "#",
+                href: "https://ksandk.com/private-clients/domestic-violence-laws-india-legal/",
               },
               {
                 icon: <FaFileAlt size={40} color={colors.primary} />,
@@ -525,7 +644,7 @@ const GuestHome = () => {
                 description:
                   "Find legal resources and support to help you navigate the legal system.",
                 action: "Explore Resources",
-                href: "#",
+                href: "https://nyaaya.org/legal-explainer/what-are-the-rights-and-remedies-for-victims-against-domestic-violence/",
               },
             ].map((item, index) => (
               <Grid item xs={12} md={4} key={index}>
