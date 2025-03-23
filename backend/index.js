@@ -598,3 +598,356 @@ const chatSchema = new mongoose.Schema({
 });
 
 const Chat = mongoose.model("Chat", chatSchema);
+
+//District
+const districtSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+});
+const District = mongoose.model("District", districtSchema);
+
+//place
+const placeSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  districtId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "District",
+    required: true,
+  },
+});
+const Place = mongoose.model("Place", placeSchema);
+
+const shelterSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  districtId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "District",
+    required: true,
+  },
+  placeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Place",
+    required: true,
+  },
+});
+const Shelter = mongoose.model("Shelter", shelterSchema);
+
+// api shelter
+
+// Add District
+app.post("/api/districts", async (req, res) => {
+  try {
+    const { name } = req.body;
+
+    // Check if district already exists
+    const existingDistrict = await District.findOne({ name });
+    if (existingDistrict) {
+      return res.status(400).json({ message: "District already exists" });
+    }
+
+    // Create new district
+    const newDistrict = new District({ name });
+    await newDistrict.save();
+
+    res
+      .status(201)
+      .json({ message: "District added successfully", newDistrict });
+  } catch (error) {
+    console.error("Error adding district:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Add Place
+app.post("/api/places", async (req, res) => {
+  try {
+    const { name, districtId } = req.body;
+
+    // Check if district exists
+    const district = await District.findById(districtId);
+    if (!district) {
+      return res.status(404).json({ message: "District not found" });
+    }
+
+    // Check if place already exists
+    const existingPlace = await Place.findOne({ name });
+    if (existingPlace) {
+      return res.status(400).json({ message: "Place already exists" });
+    }
+
+    // Create new place
+    const newPlace = new Place({ name, districtId });
+    await newPlace.save();
+
+    res.status(201).json({ message: "Place added successfully", newPlace });
+  } catch (error) {
+    console.error("Error adding place:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Add Shelter
+app.post("/api/shelters", async (req, res) => {
+  try {
+    const { name, districtId, placeId } = req.body;
+
+    // Check if district exists
+    const district = await District.findById(districtId);
+    if (!district) {
+      return res.status(404).json({ message: "District not found" });
+    }
+
+    // Check if place exists
+    const place = await Place.findById(placeId);
+    if (!place) {
+      return res.status(404).json({ message: "Place not found" });
+    }
+
+    // Check if shelter already exists
+    const existingShelter = await Shelter.findOne({ name });
+    if (existingShelter) {
+      return res.status(400).json({ message: "Shelter already exists" });
+    }
+
+    // Create new shelter
+    const newShelter = new Shelter({ name, districtId, placeId });
+    await newShelter.save();
+
+    res.status(201).json({ message: "Shelter added successfully", newShelter });
+  } catch (error) {
+    console.error("Error adding shelter:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+//Get
+// Fetch all districts
+app.get("/districts", async (req, res) => {
+  try {
+    const districts = await District.find();
+    res.status(200).json(districts);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch districts" });
+  }
+});
+
+// Fetch all places
+app.get("/places", async (req, res) => {
+  try {
+    const places = await Place.find().populate("districtId", "name");
+    res.status(200).json(places);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch places" });
+  }
+});
+
+// Fetch all shelters
+app.get("/shelters", async (req, res) => {
+  try {
+    const shelters = await Shelter.find()
+      .populate("districtId", "name")
+      .populate("placeId", "name");
+    res.status(200).json(shelters);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch shelters" });
+  }
+});
+
+// counsellorSchema
+const counsellorSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+});
+
+const Counsellor = mongoose.model("Counsellor", counsellorSchema);
+
+const bookingSchema = new mongoose.Schema({
+  counsellorId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Counsellor",
+    required: true,
+  },
+  bookingDate: { type: Date, required: true },
+  status: {
+    type: String,
+    enum: ["booked", "accepted", "resolved","reject"],
+    default: "booked",
+  },
+  createdAt: { type: Date, default: Date.now },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+});
+const Booking = mongoose.model("Booking", bookingSchema);
+
+//reg
+app.post("/counsellorReg", async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+
+    // Check if all fields are provided
+    if (!name || !email || !password) {
+      return res
+        .status(400)
+        .json({ success: false, message: "All fields are required" });
+    }
+
+    // Check if the email is already registered
+    const existingCounsellor = await Counsellor.findOne({ email });
+    if (existingCounsellor) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Email already registered" });
+    }
+
+    // Create a new counsellor instance
+    const newCounsellor = new Counsellor({ name, email, password });
+
+    // Save the new counsellor to the database
+    await newCounsellor.save();
+
+    // Respond with success message
+    res
+      .status(201)
+      .json({ success: true, message: "Counsellor registered successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+//login
+app.post("/counsellorLogin", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const counsellor = await Counsellor.findOne({ email });
+    if (!counsellor || counsellor.password !== password) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Invalid credentials" });
+    }
+    res.status(200).json({
+      success: true,
+      message: "Counsellor logged in",
+      user: { id: counsellor._id, name: counsellor.name },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// API to get all counsellors
+app.get("/counsellors", async (req, res) => {
+  try {
+    const counsellors = await Counsellor.find({});
+    res.json(counsellors);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+//post booking
+app.post("/booksession", async (req, res) => {
+  try {
+    const { counsellorId, bookingDate, userId } = req.body;
+
+    // Validate if the counsellor exists
+    const counsellor = await Counsellor.findById(counsellorId);
+    if (!counsellor) {
+      return res.status(404).json({ message: "Counsellor not found" });
+    }
+
+    // Create a new booking
+    const newBooking = new Booking({
+      counsellorId,
+      bookingDate: new Date(bookingDate), // Ensure the date is in a valid format
+      userId,
+    });
+
+    // Save the booking to the database
+    await newBooking.save();
+
+    // Respond with the created booking
+    res.status(201).json(newBooking);
+  } catch (error) {
+    console.error("Error creating booking:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+//all bookings of counsellor
+app.get("/bookings/:counsellorId", async (req, res) => {
+  try {
+    const counsellorId = req.params.counsellorId;
+    const bookings = await Booking.find({ counsellorId });
+    res.json(bookings);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.get('/user-sessions/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+    
+    // Find all booking sessions for this user
+    const userSessions = await Booking.find({ userId })
+      .sort({ bookingDate: -1 }) // Sort by booking date, newest first
+      .populate('counsellorId', 'name email'); // Optionally populate counsellor details
+    
+    // Process the data to include counsellor name if it's not already included
+    const processedSessions = userSessions.map(session => {
+      // If the session doesn't have counsellorName but has populated counsellorId
+      if (!session.counsellorName && session.counsellorId && session.counsellorId.name) {
+        return {
+          ...session.toObject(),
+          counsellorName: session.counsellorId.name
+        };
+      }
+      return session;
+    });
+    
+    res.status(200).json(processedSessions);
+  } catch (error) {
+    console.error('Error fetching user sessions:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+//update status
+app.patch('/bookings/:id', async (req, res) => {
+  try {
+    // Validate the status is one of the allowed values
+    if (req.body.status && !['booked', 'accepted', 'resolved', 'reject'].includes(req.body.status)) {
+      return res.status(400).json({ message: 'Invalid status value' });
+    }
+
+    const updatedBooking = await Booking.findByIdAndUpdate(
+      req.params.id,
+      { $set: req.body },
+      { new: true, runValidators: true }
+    );
+    
+    if (!updatedBooking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+    
+    res.json(updatedBooking);
+  } catch (error) {
+    res.status(400).json({ message: 'Error updating booking', error: error.message });
+  }
+});

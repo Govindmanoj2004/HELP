@@ -102,9 +102,31 @@ const Register = () => {
     }
 
     try {
-      const endpoint =
-        user.role === "victim" ? "/victim/register" : "/officer/register";
-      const res = await axios.post(`http://localhost:5000${endpoint}`, user);
+      let endpoint;
+      let payload;
+
+      switch (user.role) {
+        case "victim":
+          endpoint = "/victim/register";
+          payload = user;
+          break;
+        case "officer":
+          endpoint = "/officer/register";
+          payload = user;
+          break;
+        case "counsellor":
+          endpoint = "/counsellorReg";
+          payload = {
+            name: user.name,
+            email: user.email,
+            password: user.password,
+          };
+          break;
+        default:
+          throw new Error("Invalid role");
+      }
+
+      const res = await axios.post(`http://localhost:5000${endpoint}`, payload);
 
       if (res.data.success) {
         navigate("/login");
@@ -166,7 +188,7 @@ const Register = () => {
               gutterBottom
               sx={{ mb: 3 }}
             >
-              Register as a Victim or Officer
+              Register as a Victim, Officer, or Counsellor
             </Typography>
           </motion.div>
 
@@ -330,6 +352,7 @@ const Register = () => {
               >
                 <MenuItem value="victim">Victim</MenuItem>
                 <MenuItem value="officer">Officer</MenuItem>
+                <MenuItem value="counsellor">Counsellor</MenuItem>
               </TextField>
               <Button
                 type="submit"

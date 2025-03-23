@@ -47,25 +47,56 @@ const Login = () => {
     setError("");
 
     try {
-      const endpoint =
-        user.role === "victim" ? "/victim/login" : "/officer/login";
-      const res = await axios.post(`http://localhost:5000${endpoint}`, user);
+      let endpoint;
+      let payload;
+
+      switch (user.role) {
+        case "victim":
+          endpoint = "/victim/login";
+          payload = user;
+          break;
+        case "officer":
+          endpoint = "/officer/login";
+          payload = user;
+          break;
+        case "counsellor":
+          endpoint = "/counsellorLogin";
+          payload = { email: user.email, password: user.password };
+          break;
+        default:
+          throw new Error("Invalid role");
+      }
+
+      const res = await axios.post(`http://localhost:5000${endpoint}`, payload);
 
       if (res.data.success) {
-        if (user.role === "victim") {
-          if (!res.data.user || !res.data.user.id) {
-            setError("Login failed: User ID missing.");
-            return;
-          }
-          sessionStorage.setItem("uID", res.data.user.id);
-          navigate("/user/home");
-        } else {
-          if (!res.data.user || !res.data.user.id) {
-            setError("Login failed: Officer ID missing.");
-            return;
-          }
-          sessionStorage.setItem("oID", res.data.user.id);
-          navigate("/officer/home");
+        switch (user.role) {
+          case "victim":
+            if (!res.data.user || !res.data.user.id) {
+              setError("Login failed: User ID missing.");
+              return;
+            }
+            sessionStorage.setItem("uID", res.data.user.id);
+            navigate("/user/home");
+            break;
+          case "officer":
+            if (!res.data.user || !res.data.user.id) {
+              setError("Login failed: Officer ID missing.");
+              return;
+            }
+            sessionStorage.setItem("oID", res.data.user.id);
+            navigate("/officer/home");
+            break;
+          case "counsellor":
+            if (!res.data.user || !res.data.user.id) {
+              setError("Login failed: Counsellor ID missing.");
+              return;
+            }
+            sessionStorage.setItem("cID", res.data.user.id);
+            navigate("/counsellor/home");
+            break;
+          default:
+            throw new Error("Invalid role");
         }
       } else {
         setError("Login failed: No success flag.");
@@ -83,7 +114,6 @@ const Login = () => {
         alignItems: "center",
         justifyContent: "center",
         minHeight: "100vh",
-        // backgroundColor: colors.background,
         paddingTop: isMobile ? 4 : 0,
         paddingBottom: isMobile ? 4 : 0,
       }}
@@ -122,9 +152,9 @@ const Login = () => {
             >
               Welcome Back
             </Typography>
-            <Typography 
-              variant="subtitle1" 
-              color={colors.lightText} 
+            <Typography
+              variant="subtitle1"
+              color={colors.lightText}
               gutterBottom
               sx={{ mb: 3 }}
             >
@@ -180,9 +210,10 @@ const Login = () => {
                   "& .MuiInputLabel-root.Mui-focused": {
                     color: colors.primary,
                   },
-                  "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                    borderColor: colors.primary,
-                  },
+                  "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline":
+                    {
+                      borderColor: colors.primary,
+                    },
                 }}
                 onChange={handleChange}
                 required
@@ -211,9 +242,10 @@ const Login = () => {
                   "& .MuiInputLabel-root.Mui-focused": {
                     color: colors.primary,
                   },
-                  "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                    borderColor: colors.primary,
-                  },
+                  "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline":
+                    {
+                      borderColor: colors.primary,
+                    },
                 }}
                 onChange={handleChange}
                 required
@@ -243,13 +275,15 @@ const Login = () => {
                   "& .MuiInputLabel-root.Mui-focused": {
                     color: colors.primary,
                   },
-                  "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                    borderColor: colors.primary,
-                  },
+                  "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline":
+                    {
+                      borderColor: colors.primary,
+                    },
                 }}
               >
                 <MenuItem value="victim">Victim</MenuItem>
                 <MenuItem value="officer">Officer</MenuItem>
+                <MenuItem value="counsellor">Counsellor</MenuItem>
               </TextField>
               <Button
                 type="submit"
@@ -262,7 +296,7 @@ const Login = () => {
                   fontWeight: "600",
                   background: colors.gradient,
                   boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
-                  "&:hover": { 
+                  "&:hover": {
                     background: colors.gradient,
                     boxShadow: "0 6px 16px rgba(59, 130, 246, 0.4)",
                   },
@@ -286,11 +320,11 @@ const Login = () => {
                   fontWeight: 600,
                   textDecoration: "none",
                   position: "relative",
-                  "&:hover": { 
+                  "&:hover": {
                     textDecoration: "none",
                     "&:after": {
                       width: "100%",
-                    }
+                    },
                   },
                   "&:after": {
                     content: '""',
@@ -301,7 +335,7 @@ const Login = () => {
                     height: "2px",
                     backgroundColor: colors.primary,
                     transition: "width 0.3s ease",
-                  }
+                  },
                 }}
               >
                 Register here

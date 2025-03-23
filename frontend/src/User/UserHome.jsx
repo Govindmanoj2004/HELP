@@ -22,7 +22,9 @@ import CloseIcon from "@mui/icons-material/Close";
 import VerifiedIcon from "@mui/icons-material/Verified";
 import SettingsIcon from "@mui/icons-material/Settings";
 import { useNavigate } from "react-router-dom";
-import Chat from './Chat';
+import Chat from "./Chat";
+import NightShelterIcon from "@mui/icons-material/NightShelter";
+import PsychologyAltIcon from "@mui/icons-material/PsychologyAlt";
 
 // Initialize socket connection
 const socket = io("http://localhost:5000");
@@ -35,10 +37,9 @@ const UserHome = () => {
   const [activeRequest, setActiveRequest] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const [OfficerId , setOfficerId] = useState(); // Officer ID
+  const [OfficerId, setOfficerId] = useState(); // Officer ID
 
   useEffect(() => {
-    
     // Notify the server that the victim has connected
     if (victimId) {
       socket.emit("victimConnected", victimId);
@@ -222,6 +223,43 @@ const UserHome = () => {
       >
         <SettingsIcon />
       </IconButton>
+
+      <IconButton
+        sx={{
+          position: "absolute",
+          top: 16,
+          right: 80,
+          color: "white",
+          backgroundColor: "rgba(255, 255, 255, 0.1)",
+          "&:hover": {
+            backgroundColor: "rgba(255, 255, 255, 0.2)",
+          },
+        }}
+        onClick={() => {
+          navigate("/user/shelters"); // Navigate to the settings page
+        }}
+      >
+        <NightShelterIcon />
+      </IconButton>
+
+      <IconButton
+        sx={{
+          position: "absolute",
+          top: 16,
+          right: 150,
+          color: "white",
+          backgroundColor: "rgba(255, 255, 255, 0.1)",
+          "&:hover": {
+            backgroundColor: "rgba(255, 255, 255, 0.2)",
+          },
+        }}
+        onClick={() => {
+          navigate("/user/counsellor"); // Navigate to the settings page
+        }}
+      >
+        <PsychologyAltIcon />
+      </IconButton>
+
       {/* Background pattern */}
       <Box
         sx={{
@@ -472,7 +510,7 @@ const UserHome = () => {
                   borderRadius: 2,
                   color: "#424242",
                   fontWeight: 500,
-                  marginBottom:2,
+                  marginBottom: 2,
                 }}
               >
                 Officer <strong>{officerName}</strong> is now assisting you.
@@ -480,7 +518,7 @@ const UserHome = () => {
               </Typography>
 
               {/* Chat input placeholder */}
-              <Chat officerId={OfficerId}/>
+              <Chat officerId={OfficerId} />
             </DialogContent>
           </Dialog>
         )}

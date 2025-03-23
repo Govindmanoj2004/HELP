@@ -31,6 +31,7 @@ import { useNavigate } from "react-router-dom";
 import Lottie from "lottie-react"; // Import Lottie
 import animationData from "./../lottie/Animation - 1742619584984.json"; // Replace with your Lottie JSON file
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import AddIcon from "@mui/icons-material/Add";
 import Chat from "./Chat";
 
 const socket = io("http://localhost:5000");
@@ -172,6 +173,7 @@ const OfficerHome = () => {
       <Container maxWidth="lg">
         {/* Navigation Icon to Anonymous SOS Page */}
         <Box sx={{ textAlign: "right", mb: 3 }}>
+          {/* eye */}
           <IconButton
             onClick={() => {
               navigate("/officer/anonymusSos");
@@ -197,12 +199,29 @@ const OfficerHome = () => {
               backgroundColor: "rgba(59, 130, 246, 0.1)",
               borderRadius: 2,
               p: 1.5,
+              margin: 1,
               "&:hover": {
                 backgroundColor: "rgba(59, 130, 246, 0.2)",
               },
             }}
           >
             <AccountCircleIcon sx={{ color: colors.primary }} />
+          </IconButton>
+          <IconButton
+            onClick={() => {
+              navigate("/officer/add");
+            }}
+            sx={{
+              backgroundColor: "rgba(59, 130, 246, 0.1)",
+              borderRadius: 2,
+              margin: 1,
+              p: 1.5,
+              "&:hover": {
+                backgroundColor: "rgba(59, 130, 246, 0.2)",
+              },
+            }}
+          >
+            <AddIcon sx={{ color: colors.primary }} />
           </IconButton>
         </Box>
 

@@ -16,10 +16,16 @@ import {
   IconButton,
 } from "@mui/material";
 import { motion } from "framer-motion";
-import { LocationOn, ArrowBack, WarningAmber, Margin } from "@mui/icons-material";
+import {
+  LocationOn,
+  ArrowBack,
+  WarningAmber,
+  Margin,
+} from "@mui/icons-material";
 import Lottie from "lottie-react";
 import animationData from "./../lottie/Animation - 1742619584984.json";
-import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import AddIcon from "@mui/icons-material/Add";
 
 // Color palette
 const colors = {
@@ -165,6 +171,7 @@ const AnonymusSos = () => {
         sx={{
           backgroundColor: "rgba(59, 130, 246, 0.1)",
           borderRadius: 2,
+          margin: 1,
           p: 1.5,
           "&:hover": {
             backgroundColor: "rgba(59, 130, 246, 0.2)",
@@ -172,6 +179,23 @@ const AnonymusSos = () => {
         }}
       >
         <AccountCircleIcon sx={{ color: colors.primary }} />
+      </IconButton>
+
+      <IconButton
+        onClick={() => {
+          navigate("/officer/add");
+        }}
+        sx={{
+          backgroundColor: "rgba(59, 130, 246, 0.1)",
+          borderRadius: 2,
+          margin: 1,
+          p: 1.5,
+          "&:hover": {
+            backgroundColor: "rgba(59, 130, 246, 0.2)",
+          },
+        }}
+      >
+        <AddIcon sx={{ color: colors.primary }} />
       </IconButton>
     </Box>
   );
