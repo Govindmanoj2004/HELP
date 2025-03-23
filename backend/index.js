@@ -390,3 +390,115 @@ app.put("/victim/:id", async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
+//anonymus sos
+const anonymusSOS = new mongoose.Schema({
+  location: {
+    type: {
+      latitude: {
+        type: Number,
+        required: true,
+      },
+      longitude: {
+        type: Number,
+        required: true,
+      },
+    },
+    required: true,
+  },
+  timestamp: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
+// Create the model
+const AnonymusSos = mongoose.model("AnonymusSos", anonymusSOS);
+
+// POST endpoint to save SOS request
+app.post("/anonymusSos", async (req, res) => {
+  try {
+    const { latitude, longitude } = req.body;
+
+    // Validate location data
+    if (!latitude || !longitude) {
+      return res.status(400).json({
+        success: false,
+        message: "Latitude and longitude are required.",
+      });
+    }
+
+    const newAnonymusSos = new AnonymusSos({
+      location: { latitude, longitude },
+    });
+
+    await newAnonymusSos.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Anonymous SOS created",
+      sos: newAnonymusSos,
+    });
+  } catch (error) {
+    console.error("Error saving SOS request:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+//get anonymusSOS only in 24hr
+app.get("/anonymusSos", async (req, res) => {
+  try {
+    // Calculate the timestamp for 24 hours ago
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    // Fetch SOS requests created within the last 24 hours
+    const sos = await AnonymusSos.find({
+      timestamp: { $gte: twentyFourHoursAgo },
+    });
+
+    res.status(200).json(sos);
+  } catch (error) {
+    console.error("Error fetching anonymous SOS requests:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+//get officer by id
+app.get("/officerProfile/:officerId", async (req, res) => {
+  try {
+    const officerId = req.params.officerId;
+    const officer = await Officer.findById(officerId);
+
+    if (!officer) {
+      return res.status(404).json({ message: "Officer not found" });
+    }
+
+    res.status(200).json(officer);
+  } catch (error) {
+    console.error("Error fetching officer data:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+//update officer
+app.put("/officerProfile/:officerId", async (req, res) => {
+  try {
+    const officerId = req.params.officerId;
+    const { name, email, password } = req.body;
+
+    const updatedOfficer = await Officer.findByIdAndUpdate(
+      officerId,
+      { name, email, password },
+      { new: true }
+    );
+
+    if (!updatedOfficer) {
+      return res.status(404).json({ message: "Officer not found" });
+    }
+
+    res.status(200).json(updatedOfficer);
+  } catch (error) {
+    console.error("Error updating officer data:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});

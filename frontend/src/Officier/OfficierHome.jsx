@@ -1,30 +1,37 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import io from "socket.io-client";
 import axios from "axios";
-import { 
-  Modal, 
-  Box, 
-  Typography, 
-  Button, 
-  Card, 
-  CardContent, 
-  CircularProgress, 
-  Container, 
+import {
+  Modal,
+  Box,
+  Typography,
+  Button,
+  Card,
+  CardContent,
+  CircularProgress,
+  Container,
   Grid,
   Divider,
   Avatar,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  IconButton,
 } from "@mui/material";
 import { motion } from "framer-motion";
-import { 
-  LocationOn, 
-  Person, 
-  Forum, 
+import {
+  LocationOn,
+  Person,
+  Forum,
   Close,
   Refresh,
-  WarningAmber
+  WarningAmber,
+  Visibility,
 } from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
+import Lottie from "lottie-react"; // Import Lottie
+import animationData from "./../lottie/Animation - 1742619584984.json"; // Replace with your Lottie JSON file
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+
 
 const socket = io("http://localhost:5000");
 
@@ -51,6 +58,8 @@ const OfficerHome = () => {
   const [error, setError] = useState(null);
   const [openModal, setOpenModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false); // State to control Lottie animation
+  const lottieRef = useRef(null); // Ref to control Lottie animation
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -67,10 +76,16 @@ const OfficerHome = () => {
 
   useEffect(() => {
     fetchHelpRequests();
-    socket.on("newHelpRequest", (newRequest) => setHelpRequests((prev) => [...prev, newRequest]));
+    socket.on("newHelpRequest", (newRequest) =>
+      setHelpRequests((prev) => [...prev, newRequest])
+    );
     socket.on("updateHelpRequest", ({ requestId, status, officerId }) => {
       setHelpRequests((prev) =>
-        prev.map((req) => (req._id === requestId ? { ...req, status, assignedOfficerId: officerId } : req))
+        prev.map((req) =>
+          req._id === requestId
+            ? { ...req, status, assignedOfficerId: officerId }
+            : req
+        )
       );
     });
     return () => {
@@ -79,26 +94,56 @@ const OfficerHome = () => {
     };
   }, []);
 
+  // Play Lottie animation once when the page loads
+  useEffect(() => {
+    if (lottieRef.current) {
+      lottieRef.current.play();
+    }
+  }, []);
+
+  // Toggle Lottie animation play/pause
+  const toggleAnimation = () => {
+    if (lottieRef.current) {
+      if (isPlaying) {
+        lottieRef.current.pause();
+      } else {
+        lottieRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
   const acceptHelpRequest = async (requestId) => {
     try {
       const officerId = sessionStorage.getItem("oID");
       if (!officerId) return;
-      await axios.post("http://localhost:5000/helprequest/accept", { requestId, officerId });
+      await axios.post("http://localhost:5000/helprequest/accept", {
+        requestId,
+        officerId,
+      });
       setSelectedRequest(helpRequests.find((req) => req._id === requestId));
       setOpenModal(true);
     } catch (error) {
-      console.error("Error accepting request:", error.response?.data || error.message);
+      console.error(
+        "Error accepting request:",
+        error.response?.data || error.message
+      );
     }
   };
 
   const releaseHelpRequest = async () => {
     if (!selectedRequest) return;
     try {
-      await axios.post("http://localhost:5000/helprequest/release", { requestId: selectedRequest._id });
+      await axios.post("http://localhost:5000/helprequest/release", {
+        requestId: selectedRequest._id,
+      });
       socket.emit("officerClosedChat", { requestId: selectedRequest._id });
       closeModalAndRefresh();
     } catch (error) {
-      console.error("Error releasing request:", error.response?.data || error.message);
+      console.error(
+        "Error releasing request:",
+        error.response?.data || error.message
+      );
     }
   };
 
@@ -113,61 +158,124 @@ const OfficerHome = () => {
     return name ? name.charAt(0).toUpperCase() : "?";
   };
 
+  const navigate = useNavigate();
+
   return (
-    <Box sx={{ 
-      minHeight: "100vh", 
-      backgroundColor: colors.background,
-      pt: 4,
-      pb: 8
-    }}>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        backgroundColor: colors.background,
+        pt: 4,
+        pb: 8,
+      }}
+    >
       <Container maxWidth="lg">
+        {/* Navigation Icon to Anonymous SOS Page */}
+        <Box sx={{ textAlign: "right", mb: 3 }}>
+          <IconButton
+            onClick={() => {
+              navigate("/officer/anonymusSos");
+            }}
+            sx={{
+              backgroundColor: "rgba(59, 130, 246, 0.1)",
+              borderRadius: 2,
+              margin: 1,
+              p: 1.5,
+              "&:hover": {
+                backgroundColor: "rgba(59, 130, 246, 0.2)",
+              },
+            }}
+          >
+            <Visibility sx={{ color: colors.primary }} />
+          </IconButton>
+          {/* Profile */}
+          <IconButton
+            onClick={() => {
+              navigate("/officer/settings");
+            }}
+            sx={{
+              backgroundColor: "rgba(59, 130, 246, 0.1)",
+              borderRadius: 2,
+              p: 1.5,
+              "&:hover": {
+                backgroundColor: "rgba(59, 130, 246, 0.2)",
+              },
+            }}
+          >
+            <AccountCircleIcon sx={{ color: colors.primary }} />
+          </IconButton>
+        </Box>
+
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <Box sx={{ 
-            textAlign: "center", 
-            mb: 5, 
-            pb: 3,
-            borderBottom: `1px solid ${colors.divider}`
-          }}>
-            <Typography 
-              variant="h4" 
-              fontWeight="700" 
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              mb: 5,
+              pb: 3,
+              borderBottom: `1px solid ${colors.divider}`,
+            }}
+          >
+            <Box>
+              <Typography
+                variant="h4"
+                fontWeight="700"
+                sx={{
+                  background: colors.gradient,
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
+                Active Help Requests
+              </Typography>
+              <Typography
+                variant="subtitle1"
+                color={colors.lightText}
+                sx={{ mt: 1 }}
+              >
+                Officer Dashboard
+              </Typography>
+            </Box>
+
+            {/* Lottie Animation */}
+            <Box
               sx={{
-                background: colors.gradient,
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
+                width: "100px",
+                height: "100px",
+                cursor: "pointer",
               }}
+              onClick={toggleAnimation}
             >
-              Active Help Requests
-            </Typography>
-            <Typography 
-              variant="subtitle1" 
-              color={colors.lightText} 
-              sx={{ mt: 1 }}
-            >
-              Officer Dashboard
-            </Typography>
+              <Lottie
+                lottieRef={lottieRef}
+                animationData={animationData}
+                loop={false} // Play only once
+                autoplay={false} // Disable autoplay to control manually
+              />
+            </Box>
           </Box>
         </motion.div>
 
         {loading ? (
-          <Box 
-            display="flex" 
-            justifyContent="center" 
-            alignItems="center" 
+          <Box
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
             sx={{ minHeight: "300px" }}
           >
-            <CircularProgress 
-              size={60} 
-              thickness={4} 
-              sx={{ color: colors.primary }} 
+            <CircularProgress
+              size={60}
+              thickness={4}
+              sx={{ color: colors.primary }}
             />
           </Box>
         ) : error ? (
-          <Box 
+          <Box
             sx={{
               p: 3,
               borderRadius: 3,
@@ -178,17 +286,19 @@ const OfficerHome = () => {
               justifyContent: "center",
               maxWidth: "600px",
               mx: "auto",
-              minHeight: "200px"
+              minHeight: "200px",
             }}
           >
-            <WarningAmber sx={{ color: colors.secondary, mr: 2, fontSize: "2rem" }} />
+            <WarningAmber
+              sx={{ color: colors.secondary, mr: 2, fontSize: "2rem" }}
+            />
             <Typography color={colors.secondary}>{error}</Typography>
           </Box>
         ) : (
           <>
             {/* Refresh button */}
             <Box sx={{ textAlign: "right", mb: 3 }}>
-              <Button 
+              <Button
                 startIcon={<Refresh />}
                 onClick={fetchHelpRequests}
                 sx={{
@@ -198,27 +308,31 @@ const OfficerHome = () => {
                   px: 2,
                   "&:hover": {
                     backgroundColor: "rgba(59, 130, 246, 0.2)",
-                  }
+                  },
                 }}
               >
                 Refresh
               </Button>
             </Box>
-            
-            {helpRequests.filter((req) => req.status === "pending").length > 0 ? (
+
+            {helpRequests.filter((req) => req.status === "pending").length >
+            0 ? (
               <Grid container spacing={3} justifyContent="center">
                 {helpRequests
                   .filter((req) => req.status === "pending")
                   .map((req, index) => (
                     <Grid item xs={12} sm={6} md={4} key={index}>
-                      <motion.div 
-                        whileHover={{ y: -5, boxShadow: "0 10px 25px rgba(0,0,0,0.1)" }} 
+                      <motion.div
+                        whileHover={{
+                          y: -5,
+                          boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+                        }}
                         transition={{ type: "spring", stiffness: 300 }}
                       >
-                        <Card 
-                          elevation={1} 
-                          sx={{ 
-                            p: 2, 
+                        <Card
+                          elevation={1}
+                          sx={{
+                            p: 2,
                             borderRadius: 3,
                             border: `1px solid ${colors.divider}`,
                             height: "100%",
@@ -230,13 +344,19 @@ const OfficerHome = () => {
                           }}
                         >
                           <CardContent sx={{ p: 2, flexGrow: 1 }}>
-                            <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                              <Avatar 
-                                sx={{ 
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                mb: 2,
+                              }}
+                            >
+                              <Avatar
+                                sx={{
                                   bgcolor: colors.primary,
                                   width: 45,
                                   height: 45,
-                                  mr: 2
+                                  mr: 2,
                                 }}
                               >
                                 {getInitial(req.victimId?.name)}
@@ -245,36 +365,55 @@ const OfficerHome = () => {
                                 <Typography variant="h6" fontWeight={600}>
                                   {req.victimId?.name || "Unknown Victim"}
                                 </Typography>
-                                <Typography variant="caption" color={colors.lightText}>
-                                  Request ID: {req._id?.substring(0, 6) || "N/A"}
+                                <Typography
+                                  variant="caption"
+                                  color={colors.lightText}
+                                >
+                                  Request ID:{" "}
+                                  {req._id?.substring(0, 6) || "N/A"}
                                 </Typography>
                               </Box>
                             </Box>
-                            
+
                             <Divider sx={{ my: 2 }} />
-                            
-                            <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-                              <LocationOn sx={{ color: colors.secondary, mr: 1, fontSize: "1.2rem" }} />
+
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                mb: 1,
+                              }}
+                            >
+                              <LocationOn
+                                sx={{
+                                  color: colors.secondary,
+                                  mr: 1,
+                                  fontSize: "1.2rem",
+                                }}
+                              />
                               <Typography variant="body2" color={colors.text}>
-                                {req.location?.latitude || "N/A"}, {req.location?.longitude || "N/A"}
+                                {req.location?.latitude || "N/A"},{" "}
+                                {req.location?.longitude || "N/A"}
                               </Typography>
                             </Box>
-                            
+
                             <Box sx={{ mt: 3 }}>
                               <Button
                                 variant="contained"
                                 fullWidth
-                                sx={{ 
+                                sx={{
                                   py: 1.2,
                                   background: colors.gradient,
-                                  boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
+                                  boxShadow:
+                                    "0 4px 12px rgba(59, 130, 246, 0.3)",
                                   borderRadius: 2,
                                   textTransform: "none",
                                   fontSize: "15px",
                                   fontWeight: 600,
-                                  "&:hover": { 
+                                  "&:hover": {
                                     background: colors.gradient,
-                                    boxShadow: "0 6px 16px rgba(59, 130, 246, 0.4)",
+                                    boxShadow:
+                                      "0 6px 16px rgba(59, 130, 246, 0.4)",
                                   },
                                 }}
                                 onClick={() => acceptHelpRequest(req._id)}
@@ -286,22 +425,26 @@ const OfficerHome = () => {
                         </Card>
                       </motion.div>
                     </Grid>
-                  ))
-                }
+                  ))}
               </Grid>
             ) : (
-              <Box 
-                sx={{ 
-                  textAlign: "center", 
+              <Box
+                sx={{
+                  textAlign: "center",
                   py: 8,
                   backgroundColor: colors.lightBackground,
                   borderRadius: 4,
                   border: `1px dashed ${colors.divider}`,
                   maxWidth: "700px",
-                  mx: "auto"
+                  mx: "auto",
                 }}
               >
-                <Typography variant="h6" color={colors.lightText} fontWeight={500} gutterBottom>
+                <Typography
+                  variant="h6"
+                  color={colors.lightText}
+                  fontWeight={500}
+                  gutterBottom
+                >
                   No active help requests at the moment
                 </Typography>
                 <Typography variant="body2" color={colors.lightText}>
@@ -313,8 +456,8 @@ const OfficerHome = () => {
         )}
 
         {/* Modal */}
-        <Modal 
-          open={openModal} 
+        <Modal
+          open={openModal}
           onClose={closeModalAndRefresh}
           aria-labelledby="help-request-modal"
           aria-describedby="detailed-view-of-help-request"
@@ -334,18 +477,25 @@ const OfficerHome = () => {
               border: `1px solid ${colors.divider}`,
             }}
           >
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 3,
+              }}
+            >
               <Typography variant="h6" fontWeight="700" id="help-request-modal">
                 Help Request Details
               </Typography>
-              <Button 
-                sx={{ minWidth: 'auto', p: 1, color: colors.lightText }}
+              <Button
+                sx={{ minWidth: "auto", p: 1, color: colors.lightText }}
                 onClick={closeModalAndRefresh}
               >
                 <Close />
               </Button>
             </Box>
-            
+
             {selectedRequest && (
               <motion.div
                 initial={{ opacity: 0 }}
@@ -353,12 +503,12 @@ const OfficerHome = () => {
                 transition={{ duration: 0.3 }}
               >
                 <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
-                  <Avatar 
-                    sx={{ 
+                  <Avatar
+                    sx={{
                       bgcolor: colors.primary,
                       width: 55,
                       height: 55,
-                      mr: 2
+                      mr: 2,
                     }}
                   >
                     {getInitial(selectedRequest.victimId?.name)}
@@ -368,28 +518,37 @@ const OfficerHome = () => {
                       {selectedRequest.victimId?.name || "Unknown"}
                     </Typography>
                     <Typography variant="body2" color={colors.lightText}>
-                      Victim ID: {selectedRequest.victimId?._id?.substring(0, 8) || "N/A"}
+                      Victim ID:{" "}
+                      {selectedRequest.victimId?._id?.substring(0, 8) || "N/A"}
                     </Typography>
                   </Box>
                 </Box>
-                
+
                 <Divider sx={{ my: 2 }} />
-                
-                <Typography variant="subtitle2" color={colors.lightText} gutterBottom>
+
+                <Typography
+                  variant="subtitle2"
+                  color={colors.lightText}
+                  gutterBottom
+                >
                   Location Details
                 </Typography>
-                
-                <Box 
-                  sx={{ 
-                    p: 2, 
-                    borderRadius: 2, 
+
+                <Box
+                  sx={{
+                    p: 2,
+                    borderRadius: 2,
                     backgroundColor: colors.lightBackground,
                     border: `1px solid ${colors.divider}`,
-                    mb: 3
+                    mb: 3,
                   }}
                 >
                   <Box sx={{ display: "flex", mb: 1 }}>
-                    <Typography variant="body2" color={colors.text} sx={{ mr: 1, fontWeight: 600, width: "80px" }}>
+                    <Typography
+                      variant="body2"
+                      color={colors.text}
+                      sx={{ mr: 1, fontWeight: 600, width: "80px" }}
+                    >
                       Latitude:
                     </Typography>
                     <Typography variant="body2" color={colors.text}>
@@ -397,7 +556,11 @@ const OfficerHome = () => {
                     </Typography>
                   </Box>
                   <Box sx={{ display: "flex" }}>
-                    <Typography variant="body2" color={colors.text} sx={{ mr: 1, fontWeight: 600, width: "80px" }}>
+                    <Typography
+                      variant="body2"
+                      color={colors.text}
+                      sx={{ mr: 1, fontWeight: 600, width: "80px" }}
+                    >
                       Longitude:
                     </Typography>
                     <Typography variant="body2" color={colors.text}>
@@ -405,36 +568,43 @@ const OfficerHome = () => {
                     </Typography>
                   </Box>
                 </Box>
-                
-                <Box 
-                  sx={{ 
-                    p: 3, 
-                    backgroundColor: colors.lightBackground, 
-                    borderRadius: 3, 
+
+                <Box
+                  sx={{
+                    p: 3,
+                    backgroundColor: colors.lightBackground,
+                    borderRadius: 3,
                     border: `1px solid ${colors.divider}`,
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
                     justifyContent: "center",
-                    mb: 3
+                    mb: 3,
                   }}
                 >
-                  <Forum sx={{ color: colors.accent, fontSize: "2rem", mb: 1 }} />
+                  <Forum
+                    sx={{ color: colors.accent, fontSize: "2rem", mb: 1 }}
+                  />
                   <Typography variant="subtitle1" fontWeight="600" gutterBottom>
                     Chat Feature Coming Soon
                   </Typography>
-                  <Typography variant="body2" color={colors.lightText} textAlign="center">
-                    A secure communication system will be available here in a future update.
+                  <Typography
+                    variant="body2"
+                    color={colors.lightText}
+                    textAlign="center"
+                  >
+                    A secure communication system will be available here in a
+                    future update.
                   </Typography>
                 </Box>
               </motion.div>
             )}
-            
+
             <Box sx={{ display: "flex", justifyContent: "center" }}>
               <Button
                 variant="contained"
                 startIcon={<Close />}
-                sx={{ 
+                sx={{
                   py: 1.2,
                   px: 3,
                   backgroundColor: colors.secondary,

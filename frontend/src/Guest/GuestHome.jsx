@@ -486,7 +486,7 @@ const GuestHome = () => {
               Get Help Now
             </ActionButton>
             <SOSButton
-              onClick={() => navigate("/login")}
+              onClick={() => navigate("/sos")}
               variant="contained"
               startIcon={<FaExclamationTriangle />}
             >
