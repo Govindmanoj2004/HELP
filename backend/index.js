@@ -312,6 +312,7 @@ app.post("/helprequest/release", async (req, res) => {
 });
 
 //socket
+//govin
 
 // Track socket IDs for victims and officers
 const connectedVictims = new Map();
@@ -350,6 +351,60 @@ io.on("connection", (socket) => {
         console.log(`Officer ${userId} disconnected`);
         break;
       }
+    }
+  });
+
+  socket.on("joinChat", async (chatId) => {
+    socket.join(chatId);
+    console.log(`User joined chat: ${chatId}`);
+
+    // Split the chatId into userId and officerId
+    const [userId, officerId] = chatId.split("_");
+
+    // Check for existing chats with the same userId and officerId
+    const existingChats = await Chat.find({ userId, officerId });
+
+    // If duplicates exist, delete them (keep only the first one)
+    if (existingChats.length > 1) {
+      const chatsToDelete = existingChats.slice(1); // Keep the first chat, delete the rest
+      const deletePromises = chatsToDelete.map((chat) =>
+        Chat.deleteOne({ _id: chat._id })
+      );
+      await Promise.all(deletePromises);
+      console.log(`Deleted ${chatsToDelete.length} duplicate chats.`);
+    }
+
+    // Find or create the chat document
+    const chat = await Chat.findOneAndUpdate(
+      { _id: chatId },
+      {
+        $setOnInsert: {
+          _id: chatId,
+          userId,
+          officerId,
+          messages: [],
+        },
+      },
+      { upsert: true, new: true }
+    );
+
+    // Send previous messages to the client
+    socket.emit("previousMessages", chat.messages);
+  });
+
+  socket.on("sendMessage", async ({ chatId, sender, message }) => {
+    const chat = await Chat.findById(chatId);
+    if (chat) {
+      // Add the new message to the messages array
+      chat.messages.push({ sender, message });
+      await chat.save();
+
+      // Broadcast the message to the chat room
+      io.to(chatId).emit("newMessage", {
+        id: Date.now(),
+        sender,
+        text: message,
+      });
     }
   });
 });
@@ -502,3 +557,44 @@ app.put("/officerProfile/:officerId", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+//chatRoom
+const chatSchema = new mongoose.Schema({
+  _id: {
+    type: String, // Use String instead of ObjectId
+    required: true,
+  },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
+  officerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Officer",
+    required: true,
+  },
+  messages: [
+    {
+      sender: {
+        type: String,
+        enum: ["user", "officer"],
+        required: true,
+      },
+      message: {
+        type: String,
+        required: true,
+      },
+      timestamp: {
+        type: Date,
+        default: Date.now,
+      },
+    },
+  ],
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
+const Chat = mongoose.model("Chat", chatSchema);

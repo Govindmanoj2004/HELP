@@ -30,8 +30,8 @@ import {
 import { useNavigate } from "react-router-dom";
 import Lottie from "lottie-react"; // Import Lottie
 import animationData from "./../lottie/Animation - 1742619584984.json"; // Replace with your Lottie JSON file
-import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import Chat from "./Chat";
 
 const socket = io("http://localhost:5000");
 
@@ -131,7 +131,7 @@ const OfficerHome = () => {
     }
   };
 
-  const releaseHelpRequest = async () => {
+  const releaseHelpRequest = async (userId, victimId) => {
     if (!selectedRequest) return;
     try {
       await axios.post("http://localhost:5000/helprequest/release", {
@@ -582,20 +582,7 @@ const OfficerHome = () => {
                     mb: 3,
                   }}
                 >
-                  <Forum
-                    sx={{ color: colors.accent, fontSize: "2rem", mb: 1 }}
-                  />
-                  <Typography variant="subtitle1" fontWeight="600" gutterBottom>
-                    Chat Feature Coming Soon
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    color={colors.lightText}
-                    textAlign="center"
-                  >
-                    A secure communication system will be available here in a
-                    future update.
-                  </Typography>
+                  <Chat victimId={selectedRequest.victimId} />
                 </Box>
               </motion.div>
             )}
@@ -613,7 +600,12 @@ const OfficerHome = () => {
                   textTransform: "none",
                   fontWeight: 600,
                 }}
-                onClick={releaseHelpRequest}
+                onClick={() =>
+                  releaseHelpRequest(
+                    sessionStorage.getItem("uID"),
+                    selectedRequest.victimId
+                  )
+                }
               >
                 End Connection
               </Button>

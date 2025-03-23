@@ -22,6 +22,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import VerifiedIcon from "@mui/icons-material/Verified";
 import SettingsIcon from "@mui/icons-material/Settings";
 import { useNavigate } from "react-router-dom";
+import Chat from './Chat';
 
 // Initialize socket connection
 const socket = io("http://localhost:5000");
@@ -34,6 +35,7 @@ const UserHome = () => {
   const [activeRequest, setActiveRequest] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [OfficerId , setOfficerId] = useState(); // Officer ID
 
   useEffect(() => {
     
@@ -43,6 +45,7 @@ const UserHome = () => {
     }
 
     const handleHelpRequestAccepted = async ({ requestId, officerId }) => {
+      setOfficerId(officerId);
       setActiveRequest(true);
       setIsAnimating(false);
       setLoading(false);
@@ -469,6 +472,7 @@ const UserHome = () => {
                   borderRadius: 2,
                   color: "#424242",
                   fontWeight: 500,
+                  marginBottom:2,
                 }}
               >
                 Officer <strong>{officerName}</strong> is now assisting you.
@@ -476,29 +480,7 @@ const UserHome = () => {
               </Typography>
 
               {/* Chat input placeholder */}
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  marginTop: 2,
-                  padding: 1,
-                  border: "1px solid #e0e0e0",
-                  borderRadius: 2,
-                }}
-              >
-                <Typography
-                  variant="body2"
-                  sx={{ color: "text.disabled", flex: 1 }}
-                >
-                  Type your message here...
-                </Typography>
-                <IconButton size="small" sx={{ color: "#3f51b5" }}>
-                  <motion.div whileHover={{ rotate: 45 }}>
-                    <LocationOnIcon fontSize="small" />
-                  </motion.div>
-                </IconButton>
-              </Box>
+              <Chat officerId={OfficerId}/>
             </DialogContent>
           </Dialog>
         )}
