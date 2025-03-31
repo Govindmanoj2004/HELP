@@ -25,6 +25,7 @@ import { useNavigate } from "react-router-dom";
 import Chat from "./Chat";
 import NightShelterIcon from "@mui/icons-material/NightShelter";
 import PsychologyAltIcon from "@mui/icons-material/PsychologyAlt";
+import GavelIcon from '@mui/icons-material/Gavel';
 
 // Initialize socket connection
 const socket = io("http://localhost:5000");
@@ -258,6 +259,24 @@ const UserHome = () => {
         }}
       >
         <PsychologyAltIcon />
+      </IconButton>
+
+      <IconButton
+        sx={{
+          position: "absolute",
+          top: 16,
+          right: 220,
+          color: "white",
+          backgroundColor: "rgba(255, 255, 255, 0.1)",
+          "&:hover": {
+            backgroundColor: "rgba(255, 255, 255, 0.2)",
+          },
+        }}
+        onClick={() => {
+          navigate("/user/legalsupport"); // Navigate to the settings page
+        }}
+      >
+        <GavelIcon />
       </IconButton>
 
       {/* Background pattern */}

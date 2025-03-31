@@ -783,7 +783,7 @@ const bookingSchema = new mongoose.Schema({
   bookingDate: { type: Date, required: true },
   status: {
     type: String,
-    enum: ["booked", "accepted", "resolved","reject"],
+    enum: ["booked", "accepted", "resolved", "reject"],
     default: "booked",
   },
   createdAt: { type: Date, default: Date.now },
@@ -896,44 +896,51 @@ app.get("/bookings/:counsellorId", async (req, res) => {
   }
 });
 
-app.get('/user-sessions/:userId', async (req, res) => {
+app.get("/user-sessions/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
-    
+
     if (!userId) {
-      return res.status(400).json({ message: 'User ID is required' });
+      return res.status(400).json({ message: "User ID is required" });
     }
-    
+
     // Find all booking sessions for this user
     const userSessions = await Booking.find({ userId })
       .sort({ bookingDate: -1 }) // Sort by booking date, newest first
-      .populate('counsellorId', 'name email'); // Optionally populate counsellor details
-    
+      .populate("counsellorId", "name email"); // Optionally populate counsellor details
+
     // Process the data to include counsellor name if it's not already included
-    const processedSessions = userSessions.map(session => {
+    const processedSessions = userSessions.map((session) => {
       // If the session doesn't have counsellorName but has populated counsellorId
-      if (!session.counsellorName && session.counsellorId && session.counsellorId.name) {
+      if (
+        !session.counsellorName &&
+        session.counsellorId &&
+        session.counsellorId.name
+      ) {
         return {
           ...session.toObject(),
-          counsellorName: session.counsellorId.name
+          counsellorName: session.counsellorId.name,
         };
       }
       return session;
     });
-    
+
     res.status(200).json(processedSessions);
   } catch (error) {
-    console.error('Error fetching user sessions:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Error fetching user sessions:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
 //update status
-app.patch('/bookings/:id', async (req, res) => {
+app.patch("/bookings/:id", async (req, res) => {
   try {
     // Validate the status is one of the allowed values
-    if (req.body.status && !['booked', 'accepted', 'resolved', 'reject'].includes(req.body.status)) {
-      return res.status(400).json({ message: 'Invalid status value' });
+    if (
+      req.body.status &&
+      !["booked", "accepted", "resolved", "reject"].includes(req.body.status)
+    ) {
+      return res.status(400).json({ message: "Invalid status value" });
     }
 
     const updatedBooking = await Booking.findByIdAndUpdate(
@@ -941,13 +948,187 @@ app.patch('/bookings/:id', async (req, res) => {
       { $set: req.body },
       { new: true, runValidators: true }
     );
-    
+
     if (!updatedBooking) {
-      return res.status(404).json({ message: 'Booking not found' });
+      return res.status(404).json({ message: "Booking not found" });
     }
-    
+
     res.json(updatedBooking);
   } catch (error) {
-    res.status(400).json({ message: 'Error updating booking', error: error.message });
+    res
+      .status(400)
+      .json({ message: "Error updating booking", error: error.message });
+  }
+});
+
+//Legal support
+const legalSupportSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+});
+const LegalSupport = mongoose.model("LegalSupport", legalSupportSchema);
+
+app.post("/LegalReg", async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    // Check if all fields are provided
+    if (!name || !email || !password) {
+      return res
+        .status(400)
+        .json({ success: false, message: "All fields are required" });
+    }
+    // Check if the email is already registered
+    const existingLegalSupport = await LegalSupport.findOne({ email });
+    if (existingLegalSupport) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Email already registered" });
+    }
+    // Create a new legal support instance
+    const newLegalSupport = new LegalSupport({ name, email, password });
+    // Save the new legal support to the database
+    await newLegalSupport.save();
+    // Respond with success message
+    res.status(201).json({
+      success: true,
+      message: "Legal support registered successfully",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+//support login
+app.post("/legalLogin", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const legalSupport = await LegalSupport.findOne({ email });
+    if (!legalSupport || legalSupport.password !== password) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Invalid credentials" });
+    }
+    res.status(200).json({
+      success: true,
+      message: "Legal support logged in",
+      user: { id: legalSupport._id, name: legalSupport.name },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+//fix
+//legalsupportbooking
+const legalSupportBookingSchema = new mongoose.Schema({
+  legalSupportId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "LegalSupport",
+    required: true
+  },
+  userId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: "User", 
+    required: true 
+  },
+  bookingDate: { type: Date, required: true },
+  status: {
+    type: String,
+    enum: ["pending", "confirmed", "completed", "cancelled"],
+    default: "pending"
+  },
+  consultationType: {
+    type: String,
+    enum: ["in-person", "online"],
+    required: true
+  },
+  notes: String,
+  createdAt: { type: Date, default: Date.now }
+});
+const LegalSupportBooking = mongoose.model("LegalSupportBooking", legalSupportBookingSchema);
+
+// Get all legal experts
+app.get('/experts', async (req, res) => {
+  try {
+    const experts = await LegalSupport.find({}, 'name specialization');
+    res.json(experts);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Create a new booking
+app.post('/bookings', async (req, res) => {
+  try {
+    const { legalSupportId, bookingDate, consultationType, notes } = req.body;
+    
+    // Check if the legal support exists
+    const legalSupport = await LegalSupport.findById(legalSupportId);
+    if (!legalSupport) {
+      return res.status(404).json({ message: 'Legal expert not found' });
+    }
+
+    // Create new booking
+    const booking = new LegalSupportBooking({
+      legalSupportId,
+      userId: req.user.id,
+      bookingDate,
+      consultationType,
+      notes,
+      status: 'pending' // Will be confirmed by the expert
+    });
+
+    await booking.save();
+    
+    // Populate legal support details in the response
+    const populatedBooking = await LegalSupportBooking.findById(booking._id)
+      .populate('legalSupportId', 'name');
+
+    res.status(201).json(populatedBooking);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// Get user's bookings
+app.get('/bookings', async (req, res) => {
+  try {
+    const bookings = await LegalSupportBooking.find({ userId: req.user.id })
+      .populate('legalSupportId', 'name')
+      .sort({ bookingDate: 1 });
+      
+    res.json(bookings);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Cancel a booking
+app.delete('/bookings/:id', async (req, res) => {
+  try {
+    const booking = await LegalSupportBooking.findOne({
+      _id: req.params.id,
+      userId: req.user.id
+    });
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Only allow cancellation if booking is pending or confirmed
+    if (!['pending', 'confirmed'].includes(booking.status)) {
+      return res.status(400).json({ message: 'Cannot cancel this booking' });
+    }
+
+    // Update status to cancelled instead of deleting
+    booking.status = 'cancelled';
+    await booking.save();
+
+    res.json({ message: 'Booking cancelled successfully' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
   }
 });

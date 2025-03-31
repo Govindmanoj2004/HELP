@@ -67,7 +67,17 @@ const Counsellor = () => {
   };
 
   const handleDateChange = (event) => {
-    setSelectedDate(event.target.value);
+    const selected = event.target.value;
+    const tomorrow = new Date(Date.now() + 86400000)
+      .toISOString()
+      .split("T")[0];
+
+    if (selected < tomorrow) {
+      alert("Please select a future date.");
+      return;
+    }
+
+    setSelectedDate(selected);
   };
 
   const handleBookSession = async () => {
@@ -298,10 +308,11 @@ const Counsellor = () => {
               shrink: true,
             }}
             inputProps={{
-              min: minDate,
+              min: new Date(Date.now() + 86400000).toISOString().split("T")[0], // Ensures only future dates (starting from tomorrow)
             }}
             sx={{ mt: 2 }}
           />
+
           {selectedCounsellor && (
             <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
               You're booking a session with {selectedCounsellor.name}

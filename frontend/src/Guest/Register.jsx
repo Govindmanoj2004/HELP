@@ -121,6 +121,13 @@ const Register = () => {
             email: user.email,
             password: user.password,
           };
+        case "legalsupport":
+          endpoint = "/LegalReg";
+          payload = {
+            name: user.name,
+            email: user.email,
+            password: user.password,
+          };
           break;
         default:
           throw new Error("Invalid role");
@@ -353,6 +360,7 @@ const Register = () => {
                 <MenuItem value="victim">Victim</MenuItem>
                 <MenuItem value="officer">Officer</MenuItem>
                 <MenuItem value="counsellor">Counsellor</MenuItem>
+                <MenuItem value="counsellor">LegalSupport</MenuItem>
               </TextField>
               <Button
                 type="submit"

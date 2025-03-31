@@ -4,6 +4,7 @@ import RouterGuest from './Guest/GuestRouter';
 import RouterUser from './User/UserRouter';
 import RouterOfficier from './Officier/OfficierRouter'
 import CounsellorRouter from './Counsellor/CounsellorRouter';
+import LegalSupportRouter from './LegalSupport/LegalSupportRouter';
 
 const RouterMain = () => {
   return (
@@ -12,6 +13,7 @@ const RouterMain = () => {
       <Route path='/*' element={<RouterGuest/>} />
       <Route path='/officer/*' element={<RouterOfficier/>} />
       <Route path='/counsellor/*' element={<CounsellorRouter/>} />
+      <Route path='/legalsupport/*' element={<LegalSupportRouter/>} />
     </Routes>
   );
 };

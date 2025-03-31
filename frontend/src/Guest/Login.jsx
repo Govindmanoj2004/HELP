@@ -11,6 +11,8 @@ import {
   Link,
   useTheme,
   useMediaQuery,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import { motion } from "framer-motion";
 import axios from "axios";
@@ -34,12 +36,21 @@ const colors = {
 const Login = () => {
   const [user, setUser] = useState({ email: "", password: "", role: "victim" });
   const [error, setError] = useState("");
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const handleChange = (e) => {
     setUser({ ...user, [e.target.name]: e.target.value });
+  };
+
+  const handleCloseSnackbar = (event, reason) => {
+    if (reason === "clickaway") {
+      return;
+    }
+    setOpenSnackbar(false);
   };
 
   const handleSubmit = async (e) => {
@@ -63,6 +74,10 @@ const Login = () => {
           endpoint = "/counsellorLogin";
           payload = { email: user.email, password: user.password };
           break;
+        case "legalsupport":
+          endpoint = "/legalLogin";
+          payload = user;
+          break;
         default:
           throw new Error("Invalid role");
       }
@@ -70,34 +85,48 @@ const Login = () => {
       const res = await axios.post(`http://localhost:5000${endpoint}`, payload);
 
       if (res.data.success) {
-        switch (user.role) {
-          case "victim":
-            if (!res.data.user || !res.data.user.id) {
-              setError("Login failed: User ID missing.");
-              return;
-            }
-            sessionStorage.setItem("uID", res.data.user.id);
-            navigate("/user/home");
-            break;
-          case "officer":
-            if (!res.data.user || !res.data.user.id) {
-              setError("Login failed: Officer ID missing.");
-              return;
-            }
-            sessionStorage.setItem("oID", res.data.user.id);
-            navigate("/officer/home");
-            break;
-          case "counsellor":
-            if (!res.data.user || !res.data.user.id) {
-              setError("Login failed: Counsellor ID missing.");
-              return;
-            }
-            sessionStorage.setItem("cID", res.data.user.id);
-            navigate("/counsellor/home");
-            break;
-          default:
-            throw new Error("Invalid role");
-        }
+        setSnackbarMessage("Login successful! Redirecting...");
+        setOpenSnackbar(true);
+
+        // Delay navigation slightly to allow the user to see the success message
+        setTimeout(() => {
+          switch (user.role) {
+            case "victim":
+              if (!res.data.user || !res.data.user.id) {
+                setError("Login failed: User ID missing.");
+                return;
+              }
+              sessionStorage.setItem("uID", res.data.user.id);
+              navigate("/user/home");
+              break;
+            case "officer":
+              if (!res.data.user || !res.data.user.id) {
+                setError("Login failed: Officer ID missing.");
+                return;
+              }
+              sessionStorage.setItem("oID", res.data.user.id);
+              navigate("/officer/home");
+              break;
+            case "counsellor":
+              if (!res.data.user || !res.data.user.id) {
+                setError("Login failed: Counsellor ID missing.");
+                return;
+              }
+              sessionStorage.setItem("cID", res.data.user.id);
+              navigate("/counsellor/home");
+              break;
+            case "legalsupport":
+              if (!res.data.user || !res.data.user.id) {
+                setError("Login failed: legalsupport ID missing.");
+                return;
+              }
+              sessionStorage.setItem("lID", res.data.user.id);
+              navigate("/legalsupport/home");
+              break;
+            default:
+              throw new Error("Invalid role");
+          }
+        }, 1500);
       } else {
         setError("Login failed: No success flag.");
       }
@@ -284,6 +313,7 @@ const Login = () => {
                 <MenuItem value="victim">Victim</MenuItem>
                 <MenuItem value="officer">Officer</MenuItem>
                 <MenuItem value="counsellor">Counsellor</MenuItem>
+                <MenuItem value="legalsupport">Legalsupport</MenuItem>
               </TextField>
               <Button
                 type="submit"
@@ -344,6 +374,23 @@ const Login = () => {
           </Box>
         </Box>
       </motion.div>
+
+      {/* Success Snackbar */}
+      <Snackbar
+        open={openSnackbar}
+        autoHideDuration={1500}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity="success"
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };
