@@ -1027,108 +1027,171 @@ const legalSupportBookingSchema = new mongoose.Schema({
   legalSupportId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "LegalSupport",
-    required: true
+    required: [true, "Legal support ID is required"],
   },
-  userId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: "User", 
-    required: true 
+  victimId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Victim",
+    required: [true, "Victim ID is required"],
   },
-  bookingDate: { type: Date, required: true },
+  bookingDate: {
+    type: Date,
+    required: [true, "Booking date is required"],
+  },
   status: {
     type: String,
     enum: ["pending", "confirmed", "completed", "cancelled"],
-    default: "pending"
-  },
-  consultationType: {
-    type: String,
-    enum: ["in-person", "online"],
-    required: true
+    default: "pending",
   },
   notes: String,
-  createdAt: { type: Date, default: Date.now }
-});
-const LegalSupportBooking = mongoose.model("LegalSupportBooking", legalSupportBookingSchema);
-
-// Get all legal experts
-app.get('/experts', async (req, res) => {
-  try {
-    const experts = await LegalSupport.find({}, 'name specialization');
-    res.json(experts);
-  } catch (err) {
-    res.status(500).json({ message: 'Server error' });
-  }
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
 });
 
-// Create a new booking
-app.post('/bookings', async (req, res) => {
+const LegalSupportBooking = mongoose.model(
+  "LegalSupportBooking",
+  legalSupportBookingSchema
+);
+
+// Create a new booking (updated for victim)
+app.post("/bookings", async (req, res) => {
   try {
-    const { legalSupportId, bookingDate, consultationType, notes } = req.body;
-    
-    // Check if the legal support exists
-    const legalSupport = await LegalSupport.findById(legalSupportId);
-    if (!legalSupport) {
-      return res.status(404).json({ message: 'Legal expert not found' });
+    const { legalSupportId, victimId, bookingDate, consultationType, notes } =
+      req.body;
+
+    // Validate required fields
+    if (!legalSupportId || !victimId || !bookingDate) {
+      return res.status(400).json({ message: "Missing required fields" });
     }
 
-    // Create new booking
+    // Validate and parse booking date
+    const parsedDate = new Date(bookingDate);
+    if (isNaN(parsedDate.getTime())) {
+      return res.status(400).json({ message: "Invalid booking date format" });
+    }
+
+    // Check if date is in the future
+    if (parsedDate < new Date()) {
+      return res
+        .status(400)
+        .json({ message: "Booking date must be in the future" });
+    }
+
+    // Check if legal support exists
+    const legalSupport = await LegalSupport.findById(legalSupportId);
+    if (!legalSupport) {
+      return res.status(404).json({ message: "Legal expert not found" });
+    }
+
+    // Check if victim exists
+    const victim = await Victim.findById(victimId);
+    if (!victim) {
+      return res.status(404).json({ message: "Victim not found" });
+    }
+
     const booking = new LegalSupportBooking({
       legalSupportId,
-      userId: req.user.id,
-      bookingDate,
-      consultationType,
-      notes,
-      status: 'pending' // Will be confirmed by the expert
+      victimId,
+      bookingDate: parsedDate, // Use the validated date
+      consultationType: consultationType || "online", // Default to online
+      notes: notes || "", // Default to empty string
+      status: "pending",
     });
 
     await booking.save();
-    
-    // Populate legal support details in the response
+
     const populatedBooking = await LegalSupportBooking.findById(booking._id)
-      .populate('legalSupportId', 'name');
+      .populate("legalSupportId", "name")
+      .populate("victimId", "name");
 
     res.status(201).json(populatedBooking);
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    // Handle Mongoose validation errors specifically
+    if (err.name === "ValidationError") {
+      const messages = Object.values(err.errors).map((val) => val.message);
+      return res.status(400).json({ message: messages.join(", ") });
+    }
+    res.status(500).json({ message: "Server error" });
   }
 });
 
-// Get user's bookings
-app.get('/bookings', async (req, res) => {
+// Get victim's bookings
+app.get("/bookings", async (req, res) => {
   try {
-    const bookings = await LegalSupportBooking.find({ userId: req.user.id })
-      .populate('legalSupportId', 'name')
+    const victimId = req.query.victimId;
+    if (!victimId) {
+      return res.status(400).json({ message: "Victim ID is required" });
+    }
+
+    const bookings = await LegalSupportBooking.find({ victimId })
+      .populate("legalSupportId", "name")
       .sort({ bookingDate: 1 });
-      
+
     res.json(bookings);
   } catch (err) {
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: "Server error" });
   }
 });
 
-// Cancel a booking
-app.delete('/bookings/:id', async (req, res) => {
+// Get legal support by ID
+app.get("/legal-supports", async (req, res) => {
   try {
-    const booking = await LegalSupportBooking.findOne({
-      _id: req.params.id,
-      userId: req.user.id
-    });
+    const legalSupports = await LegalSupport.find();
+    res.json(legalSupports);
+  } catch {
+    res.status(500).json({ message: "Error fetching legal supports" });
+  }
+});
 
-    if (!booking) {
-      return res.status(404).json({ message: 'Booking not found' });
-    }
+// Get all bookings for a legal support professional
+app.get("/bookings/legal-support/:legalSupportId", async (req, res) => {
+  try {
+    const { legalSupportId } = req.params;
 
-    // Only allow cancellation if booking is pending or confirmed
-    if (!['pending', 'confirmed'].includes(booking.status)) {
-      return res.status(400).json({ message: 'Cannot cancel this booking' });
-    }
+    const bookings = await LegalSupportBooking.find({ legalSupportId })
+      .populate("victimId", "name email")
+      .sort({ bookingDate: 1 });
 
-    // Update status to cancelled instead of deleting
-    booking.status = 'cancelled';
-    await booking.save();
-
-    res.json({ message: 'Booking cancelled successfully' });
+    res.json(bookings);
   } catch (err) {
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: "Error fetching bookings" });
+  }
+});
+
+// Update a booking
+// Update a booking
+// Update a booking - using bookingsUpdate endpoint
+app.patch("/bookingsUpdate/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, notes, bookingDate } = req.body;
+
+    // Validate booking exists
+    const booking = await LegalSupportBooking.findById(id);
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    // Prepare update data
+    const updateData = {
+      updatedAt: Date.now(),
+    };
+
+    if (status) updateData.status = status;
+    if (notes) updateData.notes = notes;
+    if (bookingDate) updateData.bookingDate = new Date(bookingDate);
+
+    const updatedBooking = await LegalSupportBooking.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true }
+    ).populate("victimId", "name");
+
+    res.json(updatedBooking);
+  } catch (err) {
+    res.status(400).json({
+      message: err.message || "Failed to update booking",
+      error: err,
+    });
   }
 });
