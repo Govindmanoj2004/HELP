@@ -21,7 +21,7 @@ const io = new Server(server, { cors: { origin: "*" } });
 const connectDB = async () => {
   try {
     await mongoose.connect(
-      "mongodb+srv://test:test123@cluster0.mn5z1.mongodb.net/test",
+      "Database Connection",
       {
         useNewUrlParser: true,
         useUnifiedTopology: true,
